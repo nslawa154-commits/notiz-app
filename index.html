@@ -30,11 +30,12 @@ button{font-size:17px;min-height:48px;padding:10px 16px;border:0;border-radius:1
 <section class="card">
 <textarea id="text" placeholder="Notiz eingeben… z. B. „Mitarbeiter braucht Schulung für die Anlage“"></textarea>
 <div id="status"></div>
-<div id="corr" class="corr" hidden><div class="meta">✍️ Korrektur-Vorschlag:</div><div id="corrText" class="t"></div>
-<div class="row"><button class="primary small" id="corrOk" type="button">Übernehmen</button><button class="small" id="corrNo" type="button">Original behalten</button></div></div>
+<div id="corr" class="corr" hidden><div class="meta" id="corrText"></div>
+<div class="row"><button class="small" id="corrUndo" type="button">↩ Rückgängig</button><button class="small" id="corrNo" type="button">✕ Schließen</button></div>
+<div class="meta" style="font-size:12px;margin:6px 0 0">Hinweis: Zum Umformulieren wird der Text an einen externen Dienst (Pollinations / LanguageTool) gesendet.</div></div>
 <input id="person" placeholder="Person (optional)" style="margin-top:10px">
 <div class="row" id="chips"></div>
-<div class="row"><button class="mic" id="mic" title="Diktieren">🎤 Diktieren</button><button id="fix" type="button">✍️ Korrigieren</button><button class="primary" id="save">Speichern</button></div>
+<div class="row"><button class="mic" id="mic" title="Diktieren">🎤 Diktieren</button><button id="fix" type="button">✍️ Umformulieren</button><button class="primary" id="save">Speichern</button></div>
 </section>
 <section class="card">
 <input id="search" type="search" placeholder="🔍 Suchen…">
@@ -95,16 +96,27 @@ function applyLT(text,matches){var ms=matches.filter(function(m){return m.replac
 var out=text,lastStart=Infinity;ms.forEach(function(m){if(m.offset+m.length>lastStart)return;var orig=text.substr(m.offset,m.length),rep=m.replacements.find(function(r){return r.value.toLowerCase()===orig.toLowerCase();})||m.replacements[0];out=out.slice(0,m.offset)+rep.value+out.slice(m.offset+m.length);lastStart=m.offset;});
 out=out.trim().replace(/\s+/g," ");if(out)out=out.charAt(0).toUpperCase()+out.slice(1);if(out&&!/[.!?…:]$/.test(out))out+=".";return out;}
 window.__applyLT=applyLT;
-function correct(){var t=$("text").value.trim();if(!t)return;$("corr").hidden=false;$("corrText").textContent="⏳ Wird geprüft…";$("corrOk").disabled=true;
-if(!navigator.onLine){$("corrText").textContent="Offline – Korrektur nicht möglich.";return;}
-var body=new URLSearchParams({text:t,language:"de-DE"});
-fetch("https://api.languagetool.org/v2/check",{method:"POST",body:body}).then(function(r){if(!r.ok)throw new Error(r.status);return r.json();})
-.then(function(d){if($("text").value.trim()!==t)return;var c=applyLT(t,d.matches||[]);$("corrText").textContent=c===t?"✅ Keine Fehler gefunden.":c;$("corrText").dataset.v=c;$("corrOk").disabled=(c===t);})
-.catch(function(){$("corrText").textContent="Korrektur-Dienst nicht erreichbar. Bitte später erneut versuchen.";});}
+var origText="",busy=false;
+var SYS="Formuliere die folgende diktierte Arbeitsnotiz in klares, korrektes Deutsch um (Rechtschreibung, Grammatik, Kommas, Wortstellung, Satzbau). Bedeutung, Namen und alle Fakten beibehalten, nichts hinzufügen, knapp im Stil einer Arbeitsnotiz. Antworte NUR mit dem umformulierten Text, ohne Erklärung, ohne Anführungszeichen.";
+function withTimeout(pr,ms){return Promise.race([pr,new Promise(function(_,r){setTimeout(function(){r(new Error("timeout"));},ms);})]);}
+function llm(t){return withTimeout(fetch("https://text.pollinations.ai/openai",{method:"POST",headers:{"Content-Type":"application/json"},
+body:JSON.stringify({model:"openai",messages:[{role:"system",content:SYS},{role:"user",content:t}]})}).then(function(r){if(!r.ok)throw new Error(r.status);return r.json();})
+.then(function(d){var c=(d.choices&&d.choices[0]&&d.choices[0].message&&d.choices[0].message.content||"").trim().replace(/^["„“»]+|["“”«]+$/g,"").trim();
+if(!c||c.length>t.length*3+80)throw new Error("bad");return c;}),25000);}
+function lt(t){return withTimeout(fetch("https://api.languagetool.org/v2/check",{method:"POST",body:new URLSearchParams({text:t,language:"de-DE"})})
+.then(function(r){if(!r.ok)throw new Error(r.status);return r.json();}).then(function(d){return applyLT(t,d.matches||[]);}),15000);}
+function correct(){var t=$("text").value.trim();if(!t||busy)return;$("corr").hidden=false;$("corrUndo").hidden=true;
+if(!navigator.onLine){$("corrText").textContent="Offline – Umformulieren nicht möglich.";return;}
+busy=true;$("corrText").textContent="⏳ Wird umformuliert…";$("fix").disabled=true;
+function done(c,src){busy=false;$("fix").disabled=false;if($("text").value.trim()!==t){$("corr").hidden=true;return;}
+if(c===t){$("corrText").textContent="✅ Keine Änderungen nötig.";return;}
+origText=t;$("text").value=c;$("corrUndo").hidden=false;$("corrText").textContent="✅ Text "+src+" eingefügt. Original: „"+t+"“";}
+llm(t).then(function(c){done(c,"umformuliert (KI) und");},function(){return lt(t).then(function(c){done(c,"korrigiert (LanguageTool, KI nicht erreichbar) und");});})
+.catch(function(){busy=false;$("fix").disabled=false;$("corrText").textContent="Dienst nicht erreichbar – Text bleibt unverändert.";});}
 $("fix").onclick=correct;
-$("corrOk").onclick=function(){$("text").value=$("corrText").dataset.v||$("text").value;$("corr").hidden=true;};
+$("corrUndo").onclick=function(){if(origText)$("text").value=origText;$("corr").hidden=true;};
 $("corrNo").onclick=function(){$("corr").hidden=true;};
-$("text").addEventListener("input",function(){$("corr").hidden=true;});
+$("text").addEventListener("input",function(){if(!busy)$("corr").hidden=true;});
 // speech
 var SR=window.SpeechRecognition||window.webkitSpeechRecognition,rec=null,on=false;
 if(!SR){$("mic").onclick=function(){$("status").textContent="Spracheingabe wird von diesem Browser nicht unterstützt. Tipp: Mikrofon-Taste der Tastatur nutzen.";};}
