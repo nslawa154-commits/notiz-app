@@ -7,6 +7,23 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <title>Tafel-Finder</title>
+<meta name="description" content="Excel-Plan und Tafel fotografieren – fertige Aufträge werden violett markiert">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-180.png">
+<meta name="apple-mobile-web-app-title" content="Tafel-Finder">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Tafel-Finder">
+<meta property="og:description" content="Excel-Plan und Tafel fotografieren – fertige Aufträge werden violett markiert">
+<meta property="og:url" content="https://nslawa154-commits.github.io/notiz-app/tafel/">
+<meta property="og:image" content="https://nslawa154-commits.github.io/notiz-app/tafel/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:locale" content="de_DE">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Tafel-Finder">
+<meta name="twitter:description" content="Excel-Plan und Tafel fotografieren – fertige Aufträge werden violett markiert">
+<meta name="twitter:image" content="https://nslawa154-commits.github.io/notiz-app/tafel/og.png">
 <style>
 *{box-sizing:border-box}body{margin:0;font-family:system-ui,sans-serif;background:#f3f0f7;color:#1a1a1a;font-size:17px}
 header{background:#6a1b9a;color:#fff;padding:14px 16px;position:sticky;top:0;z-index:5}h1{margin:0;font-size:20px}
@@ -25,6 +42,14 @@ canvas{width:100%;height:auto;border-radius:10px;margin-top:8px;touch-action:pin
 <body>
 <header><h1>🔍 Tafel-Finder</h1></header>
 <main>
+<details class="card" id="help" open><summary style="font-weight:700;font-size:18px;cursor:pointer">ℹ️ So geht’s</summary>
+<ol style="margin:8px 0 0;padding-left:22px;line-height:1.5">
+<li>Excel-Plan am Bildschirm fotografieren (📷 Kamera) oder Fotos aus der 🖼 Galerie wählen – mehrere Fotos möglich.</li>
+<li>„Grüne Zeilen suchen“ tippen: Fertige Aufträge (grüne Bemerkung) landen in der Liste. Liste kurz prüfen, fehlende Nummern von Hand ergänzen.</li>
+<li>Tafel fotografieren (gerade, scharf, ohne Spiegelung – gern in 2 Hälften) und „Karten markieren“ tippen.</li>
+<li>Gefundene Karten sind violett eingekreist: durchgezogen = sicher, gestrichelt mit „?“ = bitte prüfen.</li>
+</ol>
+<p class="small" style="margin:8px 0 0">Alle Fotos und Ergebnisse bleiben nur auf deinem Handy. Tipp: Über das Browser-Menü „Zum Startbildschirm hinzufügen“.</p></details>
 <section class="card">
 <h2>1. Excel-Plan fotografieren</h2>
 <div class="row"><label class="file">📷 Kamera<input type="file" id="fxc" accept="image/*" capture="environment"></label>
@@ -53,7 +78,7 @@ canvas{width:100%;height:auto;border-radius:10px;margin-top:8px;touch-action:pin
 </main>
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@7/dist/tesseract.min.js"></script>
 <script src="core.js?v=15"></script>
-<script>if(window.self!==window.top)document.documentElement.classList.add("embedded");</script>
+<script>if(window.self!==window.top){document.documentElement.classList.add("embedded");}else{try{if(localStorage.getItem("tf_help_seen")){document.getElementById("help").open=false;}localStorage.setItem("tf_help_seen","1");}catch(e){}}</script>
 <script>
 (function(){
 "use strict";
