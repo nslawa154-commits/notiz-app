@@ -20,7 +20,7 @@ input[type=file]{display:none}.prog{font-size:14px;color:#555;margin-top:6px;min
 table{width:100%;border-collapse:collapse;font-size:16px}td,th{padding:6px 4px;border-bottom:1px solid #eee;text-align:left}
 .ok{color:#2e7d32;font-weight:700}.cand{color:#ef6c00;font-weight:700}.no{color:#c62828}
 canvas{width:100%;height:auto;border-radius:10px;margin-top:8px;touch-action:pinch-zoom}.small{font-size:13px;color:#666}
-.del{background:#fde7e9;min-height:36px;padding:4px 10px}.thumbs{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}.th{position:relative}.th img{height:80px;border-radius:6px;display:block}.th button{position:absolute;top:-6px;right:-6px;min-height:30px;width:30px;padding:0;border-radius:15px;background:#c62828;color:#fff}.th span{position:absolute;left:4px;bottom:2px;color:#fff;font-weight:700;text-shadow:0 0 3px #000}
+.del{background:#fde7e9;min-height:36px;padding:4px 10px}.thumbs{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}.th{position:relative}.th img{height:80px;border-radius:6px;display:block}.th button{position:absolute;top:-6px;right:-6px;min-height:30px;width:30px;padding:0;border-radius:15px;background:#c62828;color:#fff}.th .sh{position:absolute;left:-6px;top:-6px;right:auto;background:#1565c0}.th span{position:absolute;left:4px;bottom:2px;color:#fff;font-weight:700;text-shadow:0 0 3px #000}
 .embedded header{padding:10px 16px}
 .modes label{display:block;padding:10px;border:2px solid #e0d7ea;border-radius:12px;margin-top:8px;cursor:pointer}.modes input{transform:scale(1.4);margin-right:6px}.modes label:has(input:checked){border-color:#6a1b9a;background:#f6effb}
 .r{color:#ef6c00;font-weight:700}.q{color:#8d6e63;font-weight:700}
@@ -71,6 +71,8 @@ canvas{width:100%;height:auto;border-radius:10px;margin-top:8px;touch-action:pin
 <div id="rsec" hidden><h2 style="margin-top:10px;color:#ef6c00">Aufräumen – Ergebnis</h2><div id="rsum" class="prog"></div>
 <table><thead><tr><th>#</th><th>Wkz</th><th>FAUF</th><th>Ort</th></tr></thead><tbody id="rlist"></tbody></table></div>
 <div id="boards"></div>
+<div class="row"><button class="primary" id="shareAll" type="button">📤 Alles teilen (Fotos, markierte Bilder, Liste)</button></div>
+<div class="prog" id="ps"></div>
 <div class="small"><b style="color:#ef6c00">Orange</b> = nicht im Plan → rausnehmen (gestrichelt mit „?“ = bitte prüfen). Ort = Foto / Reihe von oben / Spalte von links (geschätzt).<br>Durchgezogener violetter Kreis = FAUF erkannt (sicher). Gestrichelt mit „?“ = nur Wkz.Nr/ähnliche FAUF (bitte prüfen). Für gute Ergebnisse: Tafel gerade, scharf und ohne Spiegelung fotografieren, ggf. in 2 Hälften.</div>
 </section>
 </main>
@@ -113,10 +115,28 @@ function kvGet(k){return tx("kv","readonly",function(s){return s.get(k);});}
 function savePhoto(kind,f){f._id=f._id||(Date.now()+"_"+Math.random().toString(36).slice(2,7));return tx("photos","readwrite",function(s){s.put({id:f._id,kind:kind,ts:Date.now(),blob:f});});}
 function delPhoto(id){return tx("photos","readwrite",function(s){s.delete(id);});}
 function persistItems(){kvSet("items",items).catch(function(){});}
+
+// ---- Teilen ----
+var markedOuts=[];
+function asFile(b,base){if(b instanceof File&&b.name){var ext=(b.name.match(/\.\w+$/)||[".jpg"])[0];return new File([b],base+ext,{type:b.type||"image/jpeg"});}return new File([b],base+".jpg",{type:b.type||"image/jpeg"});}
+function listText(){var t="Tafel-Finder – Ergebnis "+new Date().toLocaleString("de-DE")+"\n";
+ if(items.length){t+="\nFertige Aufträge (grün):\n";items.forEach(function(it,i){var r=results&&results[i];t+=(i+1)+". FAUF "+it.fauf+" / Wkz "+(it.wkz||"–")+(r?" – "+(r.status==="sicher"?"auf Tafel gefunden":r.status==="kandidat"?"prüfen (?)":"nicht gefunden"):"")+"\n";});}
+ var rl=window.__raus||[];if(rl.length){t+="\nAufräumen – nicht im Plan:\n";rl.forEach(function(x){t+=x.n+(x.status==="raus"?". RAUSNEHMEN":"? PRÜFEN")+": Wkz "+(x.wkz||"?")+" / FAUF "+(x.fauf||"nicht lesbar")+" – Foto "+x.foto+", Reihe "+x.row+", Spalte "+x.col+"\n";});}
+ return t;}
+async function shareFiles(files,text,title){var ps=$("ps");
+ try{if(navigator.canShare&&files.length&&navigator.canShare({files:files})){var d={files:files,title:title||"Tafel-Finder"};if(text)d.text=text;await navigator.share(d);if(ps)ps.textContent="✅ Geteilt.";return;}
+  if(!files.length&&navigator.share&&text){await navigator.share({text:text,title:title});return;}}
+ catch(e){if(e&&e.name==="AbortError")return;if(files.length>1&&text){try{await navigator.share({files:files,title:title});return;}catch(e2){if(e2&&e2.name==="AbortError")return;}}}
+ // Fallback: Dateien herunterladen + Text kopieren
+ files.forEach(function(f,i){setTimeout(function(){var a=document.createElement("a");a.href=URL.createObjectURL(f);a.download=f.name;document.body.appendChild(a);a.click();a.remove();},i*400);});
+ var msg=(files.length?files.length+" Datei(en) werden gespeichert (Download). ":"");
+ if(text){try{await navigator.clipboard.writeText(text);msg+="Liste wurde in die Zwischenablage kopiert – im Chat einfügen.";}catch(e){var ta=document.createElement("textarea");ta.value=text;document.body.appendChild(ta);ta.select();try{document.execCommand("copy");msg+="Liste kopiert.";}catch(e3){msg+="Liste: siehe unten.";}ta.remove();}}
+ if(ps)ps.textContent="ℹ️ Teilen mit Dateien wird hier nicht unterstützt. "+msg;else alert(msg);}
+function shareBtn(blob,name,label){var b=document.createElement("button");b.type="button";b.textContent="📤 "+label+" teilen";b.onclick=function(){shareFiles([asFile(blob,name)],"",label);};return b;}
 var exFiles=[],bdFiles=[];
 function thumbs(arr,el){el.innerHTML="";arr.forEach(function(f,i){var d=document.createElement("div");d.className="th";var im=document.createElement("img");
  if(!f._u)f._u=URL.createObjectURL(f);im.src=f._u;var b=document.createElement("button");b.textContent="✕";b.title="Entfernen";
- b.onclick=function(){if(!confirm("Dieses Foto wirklich entfernen?"))return;URL.revokeObjectURL(f._u);arr.splice(i,1);delPhoto(f._id);thumbs(arr,el);};var n=document.createElement("span");n.textContent=i+1;d.appendChild(im);d.appendChild(n);d.appendChild(b);el.appendChild(d);});}
+ b.onclick=function(){if(!confirm("Dieses Foto wirklich entfernen?"))return;URL.revokeObjectURL(f._u);arr.splice(i,1);delPhoto(f._id);thumbs(arr,el);};var sb=document.createElement("button");sb.className="sh";sb.textContent="📤";sb.title="Teilen";sb.onclick=function(){shareFiles([asFile(f,(arr===exFiles?"excel_":"tafel_")+(i+1))],"","Foto "+(i+1));};var n=document.createElement("span");n.textContent=i+1;d.appendChild(im);d.appendChild(sb);d.appendChild(n);d.appendChild(b);el.appendChild(d);});}
 function adder(inp,arr,el){$(inp).onchange=function(){var kind=arr===exFiles?"ex":"bd";Array.from(this.files).forEach(function(f){arr.push(f);savePhoto(kind,f).catch(function(e){alert("Foto konnte nicht gespeichert werden: "+e.message);});});this.value="";thumbs(arr,el);};}
 adder("fxc",exFiles,$("tx"));adder("fxg",exFiles,$("tx"));adder("fbc",bdFiles,$("tb"));adder("fbg",bdFiles,$("tb"));
 // Bild laden + verkleinern (spart Speicher)
@@ -145,7 +165,7 @@ function drawBoard(c,im,matches,clean){var W=im.width,H=im.height;c.width=W;c.he
   x.lineWidth=4;x.strokeStyle="#fff";var lab=m.n+(m.status==="raus"?"":"?");x.strokeText(lab,cd.x+r*0.4,cd.y-r*0.85);x.fillText(lab,cd.x+r*0.4,cd.y-r*0.85);x.strokeStyle="#ff7a00";});}
 $("bb").onclick=async function(){if(!bdFiles.length){alert("Bitte zuerst Tafel-Foto(s) hinzufügen.");return;}if(mode!=="raus"&&!items.length){alert("Liste der grünen Aufträge ist leer.");return;}if(mode!=="fertig"&&!plan.length){alert("Plan ist leer – bitte zuerst Excel-Fotos auswerten.");return;}
  if(typeof Tesseract==="undefined"){$("pb").textContent="Texterkennung nicht geladen (Internet?).";return;}
- $("boards").innerHTML="";var outs=[],rall=[],rn=0;var comb=items.map(function(it){return{item:it,status:"nicht gefunden",where:[]};});
+ $("boards").innerHTML="";markedOuts=[];var outs=[],rall=[],rn=0;var comb=items.map(function(it){return{item:it,status:"nicht gefunden",where:[]};});
  try{for(var bi=0;bi<bdFiles.length;bi++){var im=await loadScaled(bdFiles[bi],4200),W=im.width,H=im.height,cols=2,rows=3,ov=Math.round(W/12),all=[],n=0;var cached=await kvGet("cards_"+bdFiles[bi]._id+"_"+W).catch(function(){return null;});
   if(!cached)for(var r=0;r<rows;r++)for(var c=0;c<cols;c++){n++;var x0=Math.max(0,Math.round(c*W/cols-ov)),y0=Math.max(0,Math.round(r*H/rows-ov)),x1=Math.min(W,Math.round((c+1)*W/cols+ov)),y1=Math.min(H,Math.round((r+1)*H/rows+ov));
    var tw=Math.min(2600,Math.round((x1-x0)*1.5)),sc=tw/(x1-x0),cv=canvasOf(im,tw,true,[x0,y0,x1-x0,y1-y0]);
@@ -159,12 +179,12 @@ $("bb").onclick=async function(){if(!bdFiles.length){alert("Bitte zuerst Tafel-F
   var r1=clean.filter(function(m){return m.status==="raus";}).length,q1=clean.filter(function(m){return m.status==="pruefen";}).length;h.textContent="Tafel-Foto "+(bi+1)+": "+cards.length+" Karten erkannt"+(mode!=="raus"?" · fertig: "+s1+" sicher, "+k1+" prüfen":"")+(mode!=="fertig"?" · rausnehmen: "+r1+", prüfen: "+q1:"");box.appendChild(h);
   var out=document.createElement("canvas");drawBoard(out,im,res,clean);box.appendChild(out);
   var dl=document.createElement("button");dl.textContent="⬇ Bild "+(bi+1)+" speichern";(function(o,i){dl.onclick=function(){o.toBlob(function(b){var a=document.createElement("a");a.href=URL.createObjectURL(b);a.download="tafel_"+i+"_markiert.jpg";a.click();},"image/jpeg",0.85);};})(out,bi+1);
-  box.appendChild(dl);$("boards").appendChild(box);outs.push(await new Promise(function(r){out.toBlob(function(b){r({title:h.textContent,blob:b});},"image/jpeg",0.85);}));im.width=0;await tick();}
+  box.appendChild(dl);$("boards").appendChild(box);var ob=await new Promise(function(r){out.toBlob(function(b){r({title:h.textContent,blob:b});},"image/jpeg",0.92);});outs.push(ob);markedOuts.push(ob);box.appendChild(shareBtn(ob.blob,"tafel_"+(bi+1)+"_markiert","Bild "+(bi+1)));im.width=0;await tick();}
   results=mode==="raus"?results:comb;render();showRaus(rall);kvSet("raus",rall);kvSet("boards",outs);kvSet("results",results);var s=comb.filter(function(m){return m.status==="sicher";}).length,k=comb.filter(function(m){return m.status==="kandidat";}).length;
   var rr=rall.filter(function(x){return x.status==="raus";}).length,rq=rall.length-rr;$("pb").textContent="✅ Gesamt ("+bdFiles.length+" Foto(s))"+(mode!=="raus"?" · Fertige: "+s+" sicher, "+k+" prüfen, "+(items.length-s-k)+" nicht gefunden":"")+(mode!=="fertig"?" · Rausnehmen: "+rr+" · Prüfen: "+rq:"")+". Nicht gelesene Karten werden nicht markiert – bitte Tafel trotzdem kurz ansehen.";kvSet("pb",$("pb").textContent);}
  catch(e){$("pb").textContent="Fehler: "+e.message;}};
 
-function showRaus(r){var sec=$("rsec");if(!r||!r.length){sec.hidden=mode==="fertig";$("rlist").innerHTML='<tr><td colspan="4" class="small">Keine Ergebnisse.</td></tr>';$("rsum").textContent="";return;}sec.hidden=false;
+function showRaus(r){window.__raus=r||[];var sec=$("rsec");if(!r||!r.length){sec.hidden=mode==="fertig";$("rlist").innerHTML='<tr><td colspan="4" class="small">Keine Ergebnisse.</td></tr>';$("rsum").textContent="";return;}sec.hidden=false;
  var rr=r.filter(function(x){return x.status==="raus";}).length;$("rsum").innerHTML='<span class="r">Rausnehmen: '+rr+'</span> · <span class="q">Prüfen (?): '+(r.length-rr)+'</span>';
  $("rlist").innerHTML=r.map(function(x){return '<tr><td class="'+(x.status==="raus"?"r":"q")+'">'+x.n+(x.status==="raus"?"":"?")+'</td><td>'+esc(x.wkz||"?")+'</td><td>'+esc(x.fauf||"nicht lesbar")+'<div class="small">'+esc(x.why)+'</div></td><td>Foto '+x.foto+'<br>Reihe '+x.row+', Sp. '+x.col+'</td></tr>';}).join("");}
 document.querySelectorAll('input[name=mode]').forEach(function(r){r.checked=r.value===mode;r.onchange=function(){mode=this.value;localStorage.setItem("tf_mode",mode);$("pb").textContent="Modus geändert – „Karten markieren“ tippen (schon gelesene Tafel-Fotos gehen dann schnell).";};});
@@ -172,7 +192,7 @@ $("pclr").onclick=function(){if(confirm("Plan (alle Excel-Zeilen) wirklich leere
 renderPlan();
 function showBoards(outs){$("boards").innerHTML="";(outs||[]).forEach(function(o,i){var box=document.createElement("div"),h=document.createElement("h2");h.textContent=o.title+" (gespeichert)";
  var im=document.createElement("img");im.src=URL.createObjectURL(o.blob);im.style.width="100%";im.style.borderRadius="10px";var a=document.createElement("a");a.href=im.src;a.download="tafel_"+(i+1)+"_markiert.jpg";a.textContent="⬇ Bild "+(i+1)+" speichern";a.className="file";
- box.appendChild(h);box.appendChild(im);box.appendChild(a);$("boards").appendChild(box);});}
+ box.appendChild(h);box.appendChild(im);box.appendChild(a);box.appendChild(shareBtn(o.blob,"tafel_"+(i+1)+"_markiert","Bild "+(i+1)));$("boards").appendChild(box);});markedOuts=(outs||[]).slice();}
 DBP.then(function(){return tx("photos","readonly",function(s){return s.getAll();});}).then(function(all){(all||[]).sort(function(a,b){return a.ts-b.ts;}).forEach(function(r){var b=r.blob;b._id=r.id;(r.kind==="ex"?exFiles:bdFiles).push(b);});
  thumbs(exFiles,$("tx"));thumbs(bdFiles,$("tb"));return Promise.all([kvGet("items"),kvGet("results"),kvGet("boards"),kvGet("pb"),kvGet("plan"),kvGet("raus")]);})
  .then(function(v){if((!items||!items.length)&&v[0]&&v[0].length){items=v[0];localStorage.setItem(KEY,JSON.stringify(items));}
@@ -182,6 +202,10 @@ if(navigator.storage&&navigator.storage.persist)navigator.storage.persist();
 $("allclr").onclick=function(){if(!confirm("Wirklich ALLES löschen? Alle Fotos, die Liste und die Ergebnisse gehen verloren."))return;
  Promise.all([tx("photos","readwrite",function(s){s.clear();}),tx("kv","readwrite",function(s){s.clear();})]).then(function(){exFiles.length=0;bdFiles.length=0;items=[];results=null;plan=[];localStorage.removeItem(KEY);localStorage.removeItem(PKEY);renderPlan();showRaus([]);
  thumbs(exFiles,$("tx"));thumbs(bdFiles,$("tb"));$("boards").innerHTML="";$("pb").textContent="";$("px").textContent="";render();});};
+$("shareAll").onclick=function(){var fs=[];exFiles.forEach(function(f,i){fs.push(asFile(f,"excel_"+(i+1)));});bdFiles.forEach(function(f,i){fs.push(asFile(f,"tafel_"+(i+1)));});
+ markedOuts.forEach(function(o,i){fs.push(asFile(o.blob,"tafel_"+(i+1)+"_markiert"));});var t=listText();
+ if(!fs.length&&!items.length&&!(window.__raus||[]).length){alert("Noch nichts zum Teilen.");return;}
+ fs.push(new File([t],"tafel_ergebnis.txt",{type:"text/plain"}));$("ps").textContent="📤 "+fs.length+" Datei(en) werden geteilt …";shareFiles(fs,t,"Tafel-Finder");};
 render();
 })();
 </script>
