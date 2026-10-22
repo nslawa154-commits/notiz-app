@@ -48,6 +48,19 @@ function match(items,cards){
     var cand=cards.filter(function(c){return (wk&&c.wkz===wk)||(f&&c.fauf&&ham(c.fauf,f)===1&&(!c.wkz||c.wkz===wk));});
     return {item:it,status:cand.length?"kandidat":"nicht gefunden",cards:cand};});
 }
-var api={findGreenRows:findGreenRows,findCards:findCards,match:match,normWkz:normWkz};
+// Raster-Position (Reihe/Spalte) aus Kartenmitten schätzen
+function gridPos(cards){var hs=cards.map(function(c){return c.r;}).sort(function(a,b){return a-b;}),h=hs.length?hs[hs.length>>1]*1.1:100;
+  var srt=cards.slice().sort(function(a,b){return a.y-b.y;}),rows=[],cur=null;
+  srt.forEach(function(c){if(!cur||c.y-cur.y>h*0.6){cur={y:c.y,list:[]};rows.push(cur);}cur.list.push(c);cur.y=(cur.y*(cur.list.length-1)+c.y)/cur.list.length;});
+  rows.forEach(function(r,ri){r.list.sort(function(a,b){return a.x-b.x;}).forEach(function(c,ci){c.row=ri+1;c.col=ci+1;});});return cards;}
+// Variante 2: Karten, die NICHT im Plan stehen
+function cleanup(plan,cards){var F={},W={},Fl=[];plan.forEach(function(p){var f=String(p.fauf||"").replace(/\D/g,"");if(f){F[f]=1;Fl.push(f);}var w=normWkz(p.wkz);if(w)W[w]=1;});
+  return cards.map(function(c){var f=c.fauf;
+    if(f&&/^(1[89]|20)\d{5}$/.test(f)){if(F[f])return{card:c,status:"plan",why:"FAUF im Plan"};
+      if(Fl.some(function(x){return ham(x,f)===1;}))return{card:c,status:"pruefen",why:"FAUF fast wie im Plan – evtl. falsch gelesen"};
+      return{card:c,status:"raus",why:"FAUF nicht im Plan"};}
+    if(c.wkz){if(W[c.wkz])return{card:c,status:"pruefen",why:"FAUF nicht lesbar, Wkz steht im Plan"};return{card:c,status:"raus",why:"FAUF nicht lesbar, Wkz nicht im Plan"};}
+    return{card:c,status:"pruefen",why:"Nummer nicht lesbar"};});}
+var api={findGreenRows:findGreenRows,findCards:findCards,match:match,normWkz:normWkz,gridPos:gridPos,cleanup:cleanup};
 if(typeof module!=="undefined"&&module.exports)module.exports=api;else root.TafelCore=api;
 })(this);

@@ -37,6 +37,8 @@ table{width:100%;border-collapse:collapse;font-size:16px}td,th{padding:6px 4px;b
 canvas{width:100%;height:auto;border-radius:10px;margin-top:8px;touch-action:pinch-zoom}.small{font-size:13px;color:#666}
 .del{background:#fde7e9;min-height:36px;padding:4px 10px}.thumbs{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}.th{position:relative}.th img{height:80px;border-radius:6px;display:block}.th button{position:absolute;top:-6px;right:-6px;min-height:30px;width:30px;padding:0;border-radius:15px;background:#c62828;color:#fff}.th span{position:absolute;left:4px;bottom:2px;color:#fff;font-weight:700;text-shadow:0 0 3px #000}
 .embedded header{padding:10px 16px}
+.modes label{display:block;padding:10px;border:2px solid #e0d7ea;border-radius:12px;margin-top:8px;cursor:pointer}.modes input{transform:scale(1.4);margin-right:6px}.modes label:has(input:checked){border-color:#6a1b9a;background:#f6effb}
+.r{color:#ef6c00;font-weight:700}.q{color:#8d6e63;font-weight:700}
 </style>
 </head>
 <body>
@@ -57,6 +59,12 @@ canvas{width:100%;height:auto;border-radius:10px;margin-top:8px;touch-action:pin
 <div class="thumbs" id="tx"></div>
 <div class="row"><button class="primary" id="bx">Grüne Zeilen suchen</button></div><div class="prog" id="px"></div>
 </section>
+<section class="card" id="modeCard">
+<h2>Was soll gesucht werden?</h2>
+<div class="modes"><label><input type="radio" name="mode" value="fertig"> <b style="color:#8e24aa">Variante 1: Fertige finden</b><br><span class="small">Grüne Zeilen im Excel → Karten auf der Tafel <b>violett</b> einkreisen</span></label>
+<label><input type="radio" name="mode" value="raus"> <b style="color:#ef6c00">Variante 2: Aufräumen – nicht im Plan</b><br><span class="small">Alle Zeilen im Excel lesen → Karten, die <b>nicht</b> im Plan stehen, <b>orange</b> einkreisen = rausnehmen</span></label>
+<label><input type="radio" name="mode" value="beides"> <b>Beides</b><br><span class="small">Violett + orange in einem Bild</span></label></div>
+</section>
 <section class="card">
 <h2>Erledigte Aufträge (grün)</h2>
 <table><thead><tr><th>FAUF</th><th>Wkz.Nr</th><th>Status</th><th></th></tr></thead><tbody id="list"></tbody></table>
@@ -64,6 +72,9 @@ canvas{width:100%;height:auto;border-radius:10px;margin-top:8px;touch-action:pin
 <div class="row"><button id="madd">➕ Manuell hinzufügen</button><button id="mclr">🗑 Liste leeren</button></div>
 <div class="row"><button id="allclr" class="del">⚠️ Alles löschen (Fotos, Liste, Ergebnisse)</button></div>
 <div class="small">Liste wird auf dem Gerät gespeichert. Bitte grüne Zeilen kurz mit dem Foto vergleichen.</div>
+<h2 style="margin-top:14px">Plan (alle Zeilen, für Variante 2): <span id="planN">0</span> Aufträge</h2>
+<details><summary class="small">Plan anzeigen</summary><div id="planList" class="small" style="line-height:1.6"></div></details>
+<div class="row"><button id="pclr">🗑 Plan leeren</button></div>
 </section>
 <section class="card">
 <h2>2. Tafel fotografieren</h2>
@@ -72,19 +83,24 @@ canvas{width:100%;height:auto;border-radius:10px;margin-top:8px;touch-action:pin
 <div class="thumbs" id="tb"></div>
 <div class="row"><button class="primary" id="bb">Karten markieren</button></div>
 <div class="prog" id="pb"></div>
+<div id="rsec" hidden><h2 style="margin-top:10px;color:#ef6c00">Aufräumen – Ergebnis</h2><div id="rsum" class="prog"></div>
+<table><thead><tr><th>#</th><th>Wkz</th><th>FAUF</th><th>Ort</th></tr></thead><tbody id="rlist"></tbody></table></div>
 <div id="boards"></div>
-<div class="small">Durchgezogener lila Kreis = FAUF erkannt (sicher). Gestrichelt mit „?“ = nur Wkz.Nr/ähnliche FAUF (bitte prüfen). Für gute Ergebnisse: Tafel gerade, scharf und ohne Spiegelung fotografieren, ggf. in 2 Hälften.</div>
+<div class="small"><b style="color:#ef6c00">Orange</b> = nicht im Plan → rausnehmen (gestrichelt mit „?“ = bitte prüfen). Ort = Foto / Reihe von oben / Spalte von links (geschätzt).<br>Durchgezogener violetter Kreis = FAUF erkannt (sicher). Gestrichelt mit „?“ = nur Wkz.Nr/ähnliche FAUF (bitte prüfen). Für gute Ergebnisse: Tafel gerade, scharf und ohne Spiegelung fotografieren, ggf. in 2 Hälften.</div>
 </section>
 </main>
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@7/dist/tesseract.min.js"></script>
-<script src="core.js?v=15"></script>
+<script src="core.js?v=16"></script>
 <script>if(window.self!==window.top){document.documentElement.classList.add("embedded");}else{try{if(localStorage.getItem("tf_help_seen")){document.getElementById("help").open=false;}localStorage.setItem("tf_help_seen","1");}catch(e){}}</script>
 <script>
 (function(){
 "use strict";
 var $=function(i){return document.getElementById(i);},KEY="tafelfinder_liste_v1";
 var items=[];try{items=JSON.parse(localStorage.getItem(KEY))||[];}catch(e){}
-var results=null,worker=null;
+var results=null,worker=null,PKEY="tafelfinder_plan_v1",plan=[];try{plan=JSON.parse(localStorage.getItem(PKEY))||[];}catch(e){}
+var mode=localStorage.getItem("tf_mode")||"fertig";
+function savePlan(){localStorage.setItem(PKEY,JSON.stringify(plan));if(typeof kvSet==="function")kvSet("plan",plan).catch(function(){});renderPlan();}
+function renderPlan(){var el=document.getElementById("planN");if(!el)return;el.textContent=plan.length;document.getElementById("planList").innerHTML=plan.map(function(p){return esc(p.fauf)+" / "+esc(p.wkz||"–");}).join(" · ")||"leer";}
 function save(){localStorage.setItem(KEY,JSON.stringify(items));if(typeof persistItems==="function")persistItems();}
 function esc(s){return String(s).replace(/[&<>"]/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c];});}
 function render(){var h="";items.forEach(function(it,i){var st="",r=results&&results[i];
@@ -125,49 +141,61 @@ function loadScaled(file,maxDim){return loadImg(file).then(function(im){var W=im
 var tick=function(){return new Promise(function(r){setTimeout(r,30);});};
 $("bx").onclick=async function(){if(!exFiles.length){alert("Bitte zuerst Excel-Foto(s) hinzufügen.");return;}
  if(typeof Tesseract==="undefined"){$("px").textContent="Texterkennung nicht geladen (Internet?). Bitte Nummern manuell eintragen.";return;}
- var found=0,tot=0;try{for(var k=0;k<exFiles.length;k++){var im=await loadScaled(exFiles[k],2667);
+ var found=0,tot=0,planAdded=0;try{for(var k=0;k<exFiles.length;k++){var im=await loadScaled(exFiles[k],2667);
   var col=canvasOf(im,2000,false),gr=canvasOf(im,2000,true),data=col.getContext("2d").getImageData(0,0,col.width,col.height).data,W=col.width,H=col.height;
   var words=await ocr(gr,function(p){$("px").textContent="Foto "+(k+1)+"/"+exFiles.length+": Texterkennung "+p+" %";});
   var rows=TafelCore.findGreenRows(words,function(x,y){var i=(y*W+x)*4;return[data[i],data[i+1],data[i+2]];},W,H);
+  var pn=0;rows.forEach(function(r){if(!plan.some(function(p){return p.fauf===r.fauf;})){plan.push({fauf:r.fauf,wkz:r.wkz});pn++;}});planAdded+=pn;savePlan();
   rows.filter(function(r){return r.green;}).forEach(function(r){tot++;if(!items.some(function(i){return i.fauf===r.fauf;})){items.push({fauf:r.fauf,wkz:r.wkz});found++;}});
   col.width=gr.width=im.width=0;data=null;results=null;save();render();await tick();}
-  $("px").textContent="✅ "+exFiles.length+" Foto(s): "+tot+" grüne Zeile(n), davon "+found+" neu übernommen (doppelte FAUF ignoriert). Bitte prüfen.";}
+  $("px").textContent="✅ "+exFiles.length+" Foto(s): "+tot+" grüne Zeile(n), davon "+found+" neu übernommen (doppelte FAUF ignoriert). Plan: "+plan.length+" Aufträge (+"+planAdded+"). Bitte prüfen.";}
  catch(e){$("px").textContent="Fehler bei der Auswertung: "+e.message;}
  results=null;save();render();};
-function drawBoard(c,im,matches){var W=im.width,H=im.height;c.width=W;c.height=H;var x=c.getContext("2d");x.drawImage(im,0,0);
+function drawBoard(c,im,matches,clean){var W=im.width,H=im.height;c.width=W;c.height=H;var x=c.getContext("2d");x.drawImage(im,0,0);
  var lw=Math.max(8,W/120);x.strokeStyle="#8e24aa";x.fillStyle="#8e24aa";x.font="bold "+Math.round(W/35)+"px sans-serif";
  matches.forEach(function(m,i){m.cards.forEach(function(cd){var r=Math.max(cd.r,W/14);x.lineWidth=m.status==="sicher"?lw:lw*0.6;x.setLineDash(m.status==="sicher"?[]:[lw*2,lw*1.5]);
-  x.beginPath();x.ellipse(cd.x,cd.y,r,r*0.85,0,0,Math.PI*2);x.stroke();x.setLineDash([]);x.fillText((i+1)+(m.status==="sicher"?"":"?"),cd.x-r,cd.y-r*0.85);});});}
-$("bb").onclick=async function(){if(!bdFiles.length){alert("Bitte zuerst Tafel-Foto(s) hinzufügen.");return;}if(!items.length){alert("Liste ist leer.");return;}
+  x.beginPath();x.ellipse(cd.x,cd.y,r,r*0.85,0,0,Math.PI*2);x.stroke();x.setLineDash([]);x.fillText((i+1)+(m.status==="sicher"?"":"?"),cd.x-r,cd.y-r*0.85);});});
+ x.strokeStyle="#ff7a00";x.fillStyle="#ff7a00";(clean||[]).forEach(function(m){if(m.status==="plan"){if(mode!=="fertig"){x.save();x.lineWidth=Math.max(2,lw/4);x.strokeStyle="rgba(120,120,120,.6)";x.beginPath();var cd0=m.card,r0=Math.max(cd0.r,W/14)*0.8;x.ellipse(cd0.x,cd0.y,r0,r0*0.85,0,0,Math.PI*2);x.stroke();x.restore();}return;}
+  var cd=m.card,r=Math.max(cd.r,W/14);x.lineWidth=m.status==="raus"?lw:lw*0.6;x.setLineDash(m.status==="raus"?[]:[lw*2,lw*1.5]);x.beginPath();x.ellipse(cd.x,cd.y,r,r*0.85,0,0,Math.PI*2);x.stroke();x.setLineDash([]);
+  x.lineWidth=4;x.strokeStyle="#fff";var lab=m.n+(m.status==="raus"?"":"?");x.strokeText(lab,cd.x+r*0.4,cd.y-r*0.85);x.fillText(lab,cd.x+r*0.4,cd.y-r*0.85);x.strokeStyle="#ff7a00";});}
+$("bb").onclick=async function(){if(!bdFiles.length){alert("Bitte zuerst Tafel-Foto(s) hinzufügen.");return;}if(mode!=="raus"&&!items.length){alert("Liste der grünen Aufträge ist leer.");return;}if(mode!=="fertig"&&!plan.length){alert("Plan ist leer – bitte zuerst Excel-Fotos auswerten.");return;}
  if(typeof Tesseract==="undefined"){$("pb").textContent="Texterkennung nicht geladen (Internet?).";return;}
- $("boards").innerHTML="";var outs=[];var comb=items.map(function(it){return{item:it,status:"nicht gefunden",where:[]};});
- try{for(var bi=0;bi<bdFiles.length;bi++){var im=await loadScaled(bdFiles[bi],4200),W=im.width,H=im.height,cols=2,rows=3,ov=Math.round(W/12),all=[],n=0;
-  for(var r=0;r<rows;r++)for(var c=0;c<cols;c++){n++;var x0=Math.max(0,Math.round(c*W/cols-ov)),y0=Math.max(0,Math.round(r*H/rows-ov)),x1=Math.min(W,Math.round((c+1)*W/cols+ov)),y1=Math.min(H,Math.round((r+1)*H/rows+ov));
+ $("boards").innerHTML="";var outs=[],rall=[],rn=0;var comb=items.map(function(it){return{item:it,status:"nicht gefunden",where:[]};});
+ try{for(var bi=0;bi<bdFiles.length;bi++){var im=await loadScaled(bdFiles[bi],4200),W=im.width,H=im.height,cols=2,rows=3,ov=Math.round(W/12),all=[],n=0;var cached=await kvGet("cards_"+bdFiles[bi]._id+"_"+W).catch(function(){return null;});
+  if(!cached)for(var r=0;r<rows;r++)for(var c=0;c<cols;c++){n++;var x0=Math.max(0,Math.round(c*W/cols-ov)),y0=Math.max(0,Math.round(r*H/rows-ov)),x1=Math.min(W,Math.round((c+1)*W/cols+ov)),y1=Math.min(H,Math.round((r+1)*H/rows+ov));
    var tw=Math.min(2600,Math.round((x1-x0)*1.5)),sc=tw/(x1-x0),cv=canvasOf(im,tw,true,[x0,y0,x1-x0,y1-y0]);
    var ws=await ocr(cv,function(p){$("pb").textContent="Tafel-Foto "+(bi+1)+"/"+bdFiles.length+": Teil "+n+"/6 – "+p+" %";});cv.width=0;
    ws.forEach(function(w){all.push({t:w.t,b:{x0:w.b.x0/sc+x0,x1:w.b.x1/sc+x0,y0:w.b.y0/sc+y0,y1:w.b.y1/sc+y0}});});}
-  var cards=TafelCore.findCards(all),res=TafelCore.match(items,cards);
+  var cards=cached||TafelCore.gridPos(TafelCore.findCards(all));if(!cached)kvSet("cards_"+bdFiles[bi]._id+"_"+W,cards).catch(function(){});
+  var res=mode==="raus"?[]:TafelCore.match(items,cards),clean=mode==="fertig"?[]:TafelCore.cleanup(plan,cards);
+  clean.filter(function(m){return m.status!=="plan";}).sort(function(a,b){return (a.status==="raus"?0:1)-(b.status==="raus"?0:1)||a.card.row-b.card.row||a.card.col-b.card.col;}).forEach(function(m){m.n=++rn;rall.push({n:m.n,status:m.status,why:m.why,wkz:m.card.wkz,fauf:m.card.fauf,foto:bi+1,row:m.card.row,col:m.card.col});});
   res.forEach(function(m,i){if(m.status==="sicher"||(m.status==="kandidat"&&comb[i].status!=="sicher")){if(m.status==="sicher"&&comb[i].status!=="sicher")comb[i].where=[];comb[i].status=m.status;comb[i].where.push(bi+1);}});
   var box=document.createElement("div"),h=document.createElement("h2"),s1=res.filter(function(m){return m.status==="sicher";}).length,k1=res.filter(function(m){return m.status==="kandidat";}).length;
-  h.textContent="Tafel-Foto "+(bi+1)+": "+cards.length+" Karten · "+s1+" sicher · "+k1+" prüfen";box.appendChild(h);
-  var out=document.createElement("canvas");drawBoard(out,im,res);box.appendChild(out);
+  var r1=clean.filter(function(m){return m.status==="raus";}).length,q1=clean.filter(function(m){return m.status==="pruefen";}).length;h.textContent="Tafel-Foto "+(bi+1)+": "+cards.length+" Karten erkannt"+(mode!=="raus"?" · fertig: "+s1+" sicher, "+k1+" prüfen":"")+(mode!=="fertig"?" · rausnehmen: "+r1+", prüfen: "+q1:"");box.appendChild(h);
+  var out=document.createElement("canvas");drawBoard(out,im,res,clean);box.appendChild(out);
   var dl=document.createElement("button");dl.textContent="⬇ Bild "+(bi+1)+" speichern";(function(o,i){dl.onclick=function(){o.toBlob(function(b){var a=document.createElement("a");a.href=URL.createObjectURL(b);a.download="tafel_"+i+"_markiert.jpg";a.click();},"image/jpeg",0.85);};})(out,bi+1);
   box.appendChild(dl);$("boards").appendChild(box);outs.push(await new Promise(function(r){out.toBlob(function(b){r({title:h.textContent,blob:b});},"image/jpeg",0.85);}));im.width=0;await tick();}
-  results=comb;render();kvSet("boards",outs);kvSet("results",comb);var s=comb.filter(function(m){return m.status==="sicher";}).length,k=comb.filter(function(m){return m.status==="kandidat";}).length;
-  $("pb").textContent="✅ Gesamt ("+bdFiles.length+" Foto(s)): "+s+" sicher · "+k+" zu prüfen · "+(items.length-s-k)+" nicht gefunden";kvSet("pb",$("pb").textContent);}
+  results=mode==="raus"?results:comb;render();showRaus(rall);kvSet("raus",rall);kvSet("boards",outs);kvSet("results",results);var s=comb.filter(function(m){return m.status==="sicher";}).length,k=comb.filter(function(m){return m.status==="kandidat";}).length;
+  var rr=rall.filter(function(x){return x.status==="raus";}).length,rq=rall.length-rr;$("pb").textContent="✅ Gesamt ("+bdFiles.length+" Foto(s))"+(mode!=="raus"?" · Fertige: "+s+" sicher, "+k+" prüfen, "+(items.length-s-k)+" nicht gefunden":"")+(mode!=="fertig"?" · Rausnehmen: "+rr+" · Prüfen: "+rq:"")+". Nicht gelesene Karten werden nicht markiert – bitte Tafel trotzdem kurz ansehen.";kvSet("pb",$("pb").textContent);}
  catch(e){$("pb").textContent="Fehler: "+e.message;}};
 
+function showRaus(r){var sec=$("rsec");if(!r||!r.length){sec.hidden=mode==="fertig";$("rlist").innerHTML='<tr><td colspan="4" class="small">Keine Ergebnisse.</td></tr>';$("rsum").textContent="";return;}sec.hidden=false;
+ var rr=r.filter(function(x){return x.status==="raus";}).length;$("rsum").innerHTML='<span class="r">Rausnehmen: '+rr+'</span> · <span class="q">Prüfen (?): '+(r.length-rr)+'</span>';
+ $("rlist").innerHTML=r.map(function(x){return '<tr><td class="'+(x.status==="raus"?"r":"q")+'">'+x.n+(x.status==="raus"?"":"?")+'</td><td>'+esc(x.wkz||"?")+'</td><td>'+esc(x.fauf||"nicht lesbar")+'<div class="small">'+esc(x.why)+'</div></td><td>Foto '+x.foto+'<br>Reihe '+x.row+', Sp. '+x.col+'</td></tr>';}).join("");}
+document.querySelectorAll('input[name=mode]').forEach(function(r){r.checked=r.value===mode;r.onchange=function(){mode=this.value;localStorage.setItem("tf_mode",mode);$("pb").textContent="Modus geändert – „Karten markieren“ tippen (schon gelesene Tafel-Fotos gehen dann schnell).";};});
+$("pclr").onclick=function(){if(confirm("Plan (alle Excel-Zeilen) wirklich leeren?")){plan=[];savePlan();}};
+renderPlan();
 function showBoards(outs){$("boards").innerHTML="";(outs||[]).forEach(function(o,i){var box=document.createElement("div"),h=document.createElement("h2");h.textContent=o.title+" (gespeichert)";
  var im=document.createElement("img");im.src=URL.createObjectURL(o.blob);im.style.width="100%";im.style.borderRadius="10px";var a=document.createElement("a");a.href=im.src;a.download="tafel_"+(i+1)+"_markiert.jpg";a.textContent="⬇ Bild "+(i+1)+" speichern";a.className="file";
  box.appendChild(h);box.appendChild(im);box.appendChild(a);$("boards").appendChild(box);});}
 DBP.then(function(){return tx("photos","readonly",function(s){return s.getAll();});}).then(function(all){(all||[]).sort(function(a,b){return a.ts-b.ts;}).forEach(function(r){var b=r.blob;b._id=r.id;(r.kind==="ex"?exFiles:bdFiles).push(b);});
- thumbs(exFiles,$("tx"));thumbs(bdFiles,$("tb"));return Promise.all([kvGet("items"),kvGet("results"),kvGet("boards"),kvGet("pb")]);})
+ thumbs(exFiles,$("tx"));thumbs(bdFiles,$("tb"));return Promise.all([kvGet("items"),kvGet("results"),kvGet("boards"),kvGet("pb"),kvGet("plan"),kvGet("raus")]);})
  .then(function(v){if((!items||!items.length)&&v[0]&&v[0].length){items=v[0];localStorage.setItem(KEY,JSON.stringify(items));}
-  if(v[1]&&v[1].length===items.length)results=v[1];showBoards(v[2]);if(v[3])$("pb").textContent=v[3];render();})
+  if(v[1]&&v[1].length===items.length)results=v[1];if((!plan||!plan.length)&&v[4]&&v[4].length){plan=v[4];localStorage.setItem(PKEY,JSON.stringify(plan));renderPlan();}if(v[5])showRaus(v[5]);showBoards(v[2]);if(v[3])$("pb").textContent=v[3];render();})
  .catch(function(e){$("pb").textContent="Speicher nicht verfügbar: "+e.message;});
 if(navigator.storage&&navigator.storage.persist)navigator.storage.persist();
 $("allclr").onclick=function(){if(!confirm("Wirklich ALLES löschen? Alle Fotos, die Liste und die Ergebnisse gehen verloren."))return;
- Promise.all([tx("photos","readwrite",function(s){s.clear();}),tx("kv","readwrite",function(s){s.clear();})]).then(function(){exFiles.length=0;bdFiles.length=0;items=[];results=null;localStorage.removeItem(KEY);
+ Promise.all([tx("photos","readwrite",function(s){s.clear();}),tx("kv","readwrite",function(s){s.clear();})]).then(function(){exFiles.length=0;bdFiles.length=0;items=[];results=null;plan=[];localStorage.removeItem(KEY);localStorage.removeItem(PKEY);renderPlan();showRaus([]);
  thumbs(exFiles,$("tx"));thumbs(bdFiles,$("tb"));$("boards").innerHTML="";$("pb").textContent="";$("px").textContent="";render();});};
 render();
 })();
