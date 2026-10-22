@@ -2,6 +2,8 @@
 <html lang="de">
 <head>
 <meta charset="UTF-8">
+<meta name="app-version" content="1.5 (22.10.2026)">
+<meta http-equiv="Cache-Control" content="no-cache">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#1565c0">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -16,7 +18,7 @@ main{max-width:720px;margin:auto;padding:12px}.card{background:#fff;border-radiu
 textarea,input,select{width:100%;font-size:18px;padding:12px;border:1px solid #ccd;border-radius:10px;font-family:inherit}
 textarea{min-height:120px;resize:vertical}.row{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}
 button{font-size:17px;min-height:48px;padding:10px 16px;border:0;border-radius:10px;background:#e3e8ef;cursor:pointer}
-.primary{background:#1565c0;color:#fff;flex:1;font-weight:600}.mic{background:#d32f2f;color:#fff;min-width:56px}.mic.on{animation:p 1s infinite}
+.primary{background:#1565c0;color:#fff;flex:1;font-weight:600}.mic{background:#d32f2f;color:#fff;min-width:56px}.mic.big{display:flex!important;width:100%;min-height:64px;font-size:22px;font-weight:700;margin-top:10px;border-radius:14px}.mic.on{animation:p 1s infinite}
 @keyframes p{50%{opacity:.5}}.chip{min-height:42px;border-radius:21px;padding:8px 14px;background:#e8eef7}.chip.sel{background:#1565c0;color:#fff}
 .note{border-left:5px solid #1565c0}.note.done{opacity:.55;border-color:#2e7d32}.note.done .t{text-decoration:line-through}
 .meta{font-size:14px;color:#556;margin-bottom:6px}.t{white-space:pre-wrap;word-wrap:break-word}.tag{background:#e8eef7;border-radius:8px;padding:2px 8px;margin-right:4px}
@@ -35,17 +37,19 @@ body{padding-bottom:70px}
 </head>
 <body>
 <div id="tabNotes">
-<header><h1>📝 Arbeitsnotizen</h1></header>
+<header><h1>📝 Arbeitsnotizen <small style="font-size:12px;opacity:.8">v1.5 (22.10.2026)</small></h1></header>
+<div id="upd" hidden style="background:#ffeb3b;padding:12px;text-align:center;font-weight:700;cursor:pointer">🔄 Neue Version verfügbar – hier tippen zum Aktualisieren</div>
 <main>
 <section class="card">
 <textarea id="text" placeholder="Notiz eingeben… z. B. „Mitarbeiter braucht Schulung für die Anlage“"></textarea>
+<button class="mic big" id="mic" type="button" title="Diktieren">🎤 Diktieren</button>
 <div id="status"></div>
 <div id="corr" class="corr" hidden><div class="meta" id="corrText"></div>
 <div class="row"><button class="small" id="corrUndo" type="button">↩ Rückgängig</button><button class="small" id="corrNo" type="button">✕ Schließen</button></div>
 <div class="meta" style="font-size:12px;margin:6px 0 0">Hinweis: Zum Umformulieren wird der Text an einen externen Dienst (Pollinations / LanguageTool) gesendet.</div></div>
 <input id="person" placeholder="Person (optional)" style="margin-top:10px">
 <div class="row" id="chips"></div>
-<div class="row"><button class="mic" id="mic" title="Diktieren">🎤 Diktieren</button><button id="fix" type="button">✍️ Umformulieren</button><button class="primary" id="save">Speichern</button></div>
+<div class="row"><button id="fix" type="button">✍️ Umformulieren</button><button class="primary" id="save">Speichern</button></div>
 </section>
 <section class="card">
 <input id="search" type="search" placeholder="🔍 Suchen…">
@@ -123,12 +127,13 @@ var out=text,lastStart=Infinity;ms.forEach(function(m){if(m.offset+m.length>last
 out=out.trim().replace(/\s+/g," ");if(out)out=out.charAt(0).toUpperCase()+out.slice(1);if(out&&!/[.!?…:]$/.test(out))out+=".";return out;}
 window.__applyLT=applyLT;
 var origText="",busy=false;
-var SYS="Formuliere die folgende diktierte Arbeitsnotiz in klares, korrektes Deutsch um (Rechtschreibung, Grammatik, Kommas, Wortstellung, Satzbau). Bedeutung, Namen und alle Fakten beibehalten, nichts hinzufügen, knapp im Stil einer Arbeitsnotiz. Antworte NUR mit dem umformulierten Text, ohne Erklärung, ohne Anführungszeichen.";
+var SYS="Du bist Korrektor für Arbeitsnotizen aus einem Industriebetrieb (Fertigung, Großpresserei, Strahlanlage). Der Text wurde per Spracherkennung diktiert: Er ist umgangssprachlich und enthält Füllwörter und falsch erkannte Wörter. Wandle ihn in präzises, korrektes Schriftdeutsch um – so wie man schreibt, nicht wie man spricht.\nRegeln:\n- Füllwörter, Wiederholungen und Umgangssprache entfernen (z. B. also, äh, ähm, ja, halt, eben, sozusagen, quasi, ne, gell, irgendwie, gucken → prüfen/kontrollieren).\n- Falsch erkannte oder getrennte Wörter aus dem Zusammenhang korrigieren. Typische Fachbegriffe: Strahlanlage, strahlen, Werkzeug, Werkzeugnummer, Auftrag, FAUF (Fertigungsauftrag), AVO (Arbeitsvorgang), Fertigungsbegleitblatt, Schicht, Schichtführer, beizen, Beize, Ronde, Ring, Vorform, Presse, Charge, Stückzahl, sperren, Prüfung.\n- Vollständige, grammatisch korrekte Sätze mit richtiger Zeichensetzung; Anweisungen klar formulieren (z. B. „Vor dem Einschalten … prüfen“).\n- Alle Fakten, Namen, Nummern, Mengen und Werte unverändert übernehmen. Nichts erfinden, nichts weglassen, was inhaltlich wichtig ist.\n- Kurz und sachlich bleiben.\nAntworte ausschließlich mit dem fertigen Text – ohne Einleitung, Erklärung oder Anführungszeichen.\nBeispiele:\nEingabe: also äh wenn man die strahl anlage halt anmacht muss man ja erst gucken ob der druck passt\nAusgabe: Vor dem Einschalten der Strahlanlage muss der Druck geprüft werden.\nEingabe: die ronden von dem auftrag die können jetzt zum beizen ne\nAusgabe: Die Ronden dieses Auftrags können jetzt gebeizt werden.\nEingabe: der klaus braucht noch ne einweisung an der presse weil der neu ist\nAusgabe: Klaus benötigt noch eine Einweisung an der Presse, da er neu ist.\nVerwende Standardwörter: „einschalten“ statt „anmachen“, „prüfen“ statt „gucken“, „benötigt“ statt „braucht“, „gebeizt“ (nicht „beizt“). Schreibe Fachbegriffe als ein Wort (Strahlanlage, Schichtführer).";
+function postFix(c){return c.replace(/\bStrahl[- ]?[Aa]nlage/g,"Strahlanlage").replace(/\bStrahlen[- ]?lage\b/g,"Strahlanlage").replace(/\bSchicht[- ][Ff]ührer/g,"Schichtführer");}
 function withTimeout(pr,ms){return Promise.race([pr,new Promise(function(_,r){setTimeout(function(){r(new Error("timeout"));},ms);})]);}
 function llm(t,sys){return withTimeout(fetch("https://text.pollinations.ai/openai",{method:"POST",headers:{"Content-Type":"application/json"},
 body:JSON.stringify({model:"openai",messages:[{role:"system",content:sys||SYS},{role:"user",content:t}]})}).then(function(r){if(!r.ok)throw new Error(r.status);return r.json();})
 .then(function(d){var c=(d.choices&&d.choices[0]&&d.choices[0].message&&d.choices[0].message.content||"").trim().replace(/^["„“»]+|["“”«]+$/g,"").trim();
-if(!c||c.length>t.length*3+80)throw new Error("bad");return c;}),45000);}
+if(!c||c.length>t.length*3+80)throw new Error("bad");return postFix(c);}),45000);}
 function lt(t){return withTimeout(fetch("https://api.languagetool.org/v2/check",{method:"POST",body:new URLSearchParams({text:t,language:"de-DE"})})
 .then(function(r){if(!r.ok)throw new Error(r.status);return r.json();}).then(function(d){return applyLT(t,d.matches||[]);}),15000);}
 function correct(){var t=$("text").value.trim();if(!t||busy)return;$("corr").hidden=false;$("corrUndo").hidden=true;
@@ -137,7 +142,7 @@ busy=true;$("corrText").textContent="⏳ Wird umformuliert…";$("fix").disabled
 function done(c,src){busy=false;$("fix").disabled=false;if($("text").value.trim()!==t){$("corr").hidden=true;return;}
 if(c===t){$("corrText").textContent="✅ Keine Änderungen nötig.";return;}
 origText=t;$("text").value=c;$("corrUndo").hidden=false;$("corrText").textContent="✅ Text "+src+" eingefügt. Original: „"+t+"“";}
-llm(t).then(function(c){done(c,"umformuliert (KI) und");},function(){return lt(t).then(function(c){done(c,"korrigiert (LanguageTool, KI nicht erreichbar) und");});})
+llmRetry(t,SYS).then(function(c){done(c,"umformuliert (KI) und");},function(){return lt(t).then(function(c){done(c,"korrigiert (LanguageTool, KI nicht erreichbar) und");});})
 .catch(function(){busy=false;$("fix").disabled=false;$("corrText").textContent="Dienst nicht erreichbar – Text bleibt unverändert.";});}
 $("fix").onclick=correct;
 $("corrUndo").onclick=function(){if(origText)$("text").value=origText;$("corr").hidden=true;};
@@ -145,17 +150,17 @@ $("corrNo").onclick=function(){$("corr").hidden=true;};
 $("text").addEventListener("input",function(){if(!busy)$("corr").hidden=true;});
 // speech
 var SR=window.SpeechRecognition||window.webkitSpeechRecognition,rec=null,on=false;
-if(!SR){$("mic").onclick=function(){$("status").textContent="Spracheingabe wird von diesem Browser nicht unterstützt. Tipp: Mikrofon-Taste der Tastatur nutzen.";};}
+if(!SR){$("mic").onclick=function(){$("status").textContent="Diktieren direkt in der App geht in diesem Browser nicht (z. B. iPhone-App vom Home-Bildschirm oder Firefox). Bitte ins Textfeld tippen und die 🎤-Taste der Tastatur benutzen – danach „✍️ Umformulieren“ drücken. Tipp: In Chrome (Android) bzw. Safari funktioniert der Knopf.";$("text").focus();};}
 else{rec=new SR();rec.lang="de-DE";rec.continuous=true;rec.interimResults=true;var base="";
 rec.onresult=function(e){var fin="",tmp="";for(var i=e.resultIndex;i<e.results.length;i++){if(e.results[i].isFinal)fin+=e.results[i][0].transcript;else tmp+=e.results[i][0].transcript;}
 if(fin)base=(base?base+" ":"")+fin.trim();$("text").value=base+(tmp?" "+tmp:"");};
 rec.onerror=function(e){$("status").textContent=e.error==="not-allowed"?"Mikrofonzugriff verweigert.":"Fehler bei Spracheingabe: "+e.error;};
-rec.onend=function(){var was=on;on=false;if(was)setTimeout(correct,300);$("mic").classList.remove("on");$("mic").textContent="🎤 Diktieren";};
+rec.onend=function(){var was=on;on=false;$("mic").textContent="🎤 Diktieren";if(was)setTimeout(correct,300);$("mic").classList.remove("on");$("mic").textContent="🎤 Diktieren";};
 $("mic").onclick=function(){if(on){rec.stop();return;}base=$("text").value.trim();$("status").textContent="";try{rec.start();on=true;$("mic").classList.add("on");$("mic").textContent="⏹ Stopp";}catch(e){$("status").textContent="Spracheingabe konnte nicht gestartet werden.";}};}
 render();
 
 // ---- Schulung: umformulieren, vorlesen, drucken ----
-var SYS_TRAIN="Formuliere die folgende Arbeitsnotiz in klares, korrektes und gut verständliches Deutsch, so dass sie in einer Mitarbeiter-Schulung laut vorgelesen werden kann: vollständige Sätze, klare Anweisungen, korrekte Rechtschreibung, Grammatik und Kommas. Alle Fakten, Namen, Nummern und Werte unverändert beibehalten, nichts erfinden oder hinzufügen. Kurz und sachlich. Antworte NUR mit dem fertigen Text, ohne Überschrift, ohne Erklärung, ohne Anführungszeichen.";
+var SYS_TRAIN=SYS;
 function targets(){var l=filtered(),s=l.filter(function(n){return n.sel;});return s.length?s:l;}
 var rwBusy=false;
 function sleep(ms){return new Promise(function(r){setTimeout(r,ms);});}
@@ -180,8 +185,14 @@ function buildPrint(list){var g={},order=["Schulung","Anlage","Mitarbeiter","Auf
  $("printArea").innerHTML=h;}
 $("prt").onclick=function(){var l=targets();if(!l.length){alert("Keine Notizen zum Drucken.");return;}buildPrint(l);setTimeout(function(){window.print();},50);};
 window.__buildPrint=buildPrint;
+// Version / Update
+var APPV=document.querySelector('meta[name="app-version"]').content;
+function checkUpd(){fetch("./?nocache="+Date.now(),{cache:"no-store"}).then(function(r){return r.text();}).then(function(h){var m=h.match(/name="app-version" content="([^"]+)"/);if(m&&m[1]!==APPV)$("upd").hidden=false;}).catch(function(){});}
+$("upd").onclick=function(){location.replace(location.pathname+"?v="+Date.now()+location.hash);};
+checkUpd();document.addEventListener("visibilitychange",function(){if(!document.hidden)checkUpd();});
+if(navigator.serviceWorker&&navigator.serviceWorker.getRegistrations)navigator.serviceWorker.getRegistrations().then(function(r){r.forEach(function(x){x.unregister();});});
 // Tabs
-function tab(t){var T=t==="tafel";$("tabNotes").hidden=T;$("tafelFrame").hidden=!T;if(T&&!$("tafelFrame").src)$("tafelFrame").src="tafel/";
+function tab(t){var T=t==="tafel";$("tabNotes").hidden=T;$("tafelFrame").hidden=!T;if(T&&!$("tafelFrame").src)$("tafelFrame").src="tafel/?v="+encodeURIComponent(APPV);
  $("tbN").classList.toggle("act",!T);$("tbT").classList.toggle("act",T);localStorage.setItem("arbeit_tab",t);}
 $("tbN").onclick=function(){tab("notes");};$("tbT").onclick=function(){tab("tafel");};
 tab(localStorage.getItem("arbeit_tab")==="tafel"||location.hash==="#tafel"?"tafel":"notes");
