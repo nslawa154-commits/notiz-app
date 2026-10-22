@@ -26,6 +26,11 @@ body{padding-bottom:70px}
 #tabs{position:fixed;left:0;right:0;bottom:0;display:flex;background:#fff;box-shadow:0 -1px 4px #0003;z-index:20;padding-bottom:env(safe-area-inset-bottom)}
 #tabs button{flex:1;border-radius:0;background:#fff;min-height:60px;font-size:17px;color:#555}#tabs button.act{color:#1565c0;font-weight:700;border-top:3px solid #1565c0}
 #tafelFrame{position:fixed;top:0;left:0;width:100%;height:calc(100% - 60px - env(safe-area-inset-bottom));border:0;background:#f3f0f7}
+.sel{width:26px;height:26px;vertical-align:middle;margin-right:6px}.orig{background:#f6f6f6;border-radius:8px;padding:8px;margin-top:6px;font-size:15px;color:#444;white-space:pre-wrap}
+#printArea{display:none}
+@media print{body{background:#fff;padding:0}body>*{display:none!important}#printArea{display:block!important;font-family:Georgia,serif;font-size:16pt;line-height:1.5;color:#000}
+#printArea h1{font-size:24pt;margin:0 0 4pt}#printArea .pdate{font-size:12pt;color:#333;margin-bottom:14pt}#printArea h2{font-size:18pt;border-bottom:1.5pt solid #000;margin:16pt 0 6pt;page-break-after:avoid}
+#printArea li{margin-bottom:10pt;page-break-inside:avoid}#printArea .pp{font-size:12pt;color:#333}@page{margin:18mm}}
 </style>
 </head>
 <body>
@@ -46,12 +51,18 @@ body{padding-bottom:70px}
 <input id="search" type="search" placeholder="🔍 Suchen…">
 <div class="row"><select id="fcat"><option value="">Alle Kategorien</option></select>
 <select id="fstat"><option value="">Alle</option><option value="offen">Offen</option><option value="erledigt">Erledigt</option></select></div>
+<div class="row"><input id="ptitle" placeholder="Titel für Druck (z. B. Schulung Anlage)" value="Schulung"></div>
+<div class="row"><button id="selAll" class="small">☑ Alle auswählen</button><button id="selNone" class="small">☐ Auswahl aufheben</button></div>
+<div class="row"><button id="rwAll" class="small">✍️ Alle umformulieren</button><button id="spAll" class="small">🔊 Alle vorlesen</button><button id="spStop" class="small">⏹ Stopp</button><button id="prt" class="small">🖨 Drucken</button></div>
+<div class="small" id="rwProg" style="font-size:14px;color:#556"></div>
+<div class="small" style="font-size:13px;color:#778">Gilt für ausgewählte Notizen (☑), sonst für alle angezeigten.</div>
 <div class="row"><button id="csv" class="small">⬇ CSV-Export</button><button id="copy" class="small">📋 Als Text kopieren</button></div>
 </section>
 <div id="list"></div>
 </main>
 </div>
 <iframe id="tafelFrame" title="Tafel-Finder" hidden></iframe>
+<div id="printArea"></div>
 <nav id="tabs"><button id="tbN" class="act">📝 Notizen</button><button id="tbT">🔍 Tafel-Finder</button></nav>
 <script>
 (function(){
@@ -81,13 +92,19 @@ return notes.filter(function(n){if(fc&&n.cats.indexOf(fc)<0)return false;if(fs==
 return !q||(n.text+" "+n.person+" "+n.cats.join(" ")).toLowerCase().indexOf(q)>=0;});}
 function render(){var l=filtered(),h="";
 if(!l.length)h='<div class="empty">Keine Notizen.</div>';
-l.forEach(function(n){h+='<div class="card note'+(n.done?' done':'')+'"><div class="meta">🕒 '+fmt(n.ts)+(n.person?' · 👤 '+esc(n.person):'')+'</div>'+
+l.forEach(function(n){h+='<div class="card note'+(n.done?' done':'')+'"><div class="meta"><input type="checkbox" class="sel" data-id="'+n.id+'"'+(n.sel?' checked':'')+' aria-label="Auswählen">🕒 '+fmt(n.ts)+(n.person?' · 👤 '+esc(n.person):'')+'</div>'+
 (n.cats.length?'<div class="meta">'+n.cats.map(function(c){return '<span class="tag">'+esc(c)+'</span>';}).join("")+'</div>':'')+
-'<div class="t">'+esc(n.text)+'</div><div class="row"><button class="small" data-a="done" data-id="'+n.id+'">'+(n.done?'↩ Wieder offen':'✔ Erledigt')+'</button>'+
+'<div class="t">'+esc(n.text)+'</div>'+(n.orig&&n.showOrig?'<div class="orig">Original: '+esc(n.orig)+'</div>':'')+
+'<div class="row"><button class="small" data-a="rw" data-id="'+n.id+'">✍️ Umformulieren</button><button class="small" data-a="sp" data-id="'+n.id+'">🔊 Vorlesen</button></div>'+
+(n.orig?'<div class="row"><button class="small" data-a="so" data-id="'+n.id+'">'+(n.showOrig?'🙈 Original ausblenden':'👁 Original anzeigen')+'</button><button class="small" data-a="undo" data-id="'+n.id+'">↩ Rückgängig</button></div>':'')+
+'<div class="row"><button class="small" data-a="done" data-id="'+n.id+'">'+(n.done?'↩ Wieder offen':'✔ Erledigt')+'</button>'+
 '<button class="small" data-a="del" data-id="'+n.id+'">🗑 Löschen</button></div></div>';});
 $("list").innerHTML=h;}
+$("list").onchange=function(e){if(e.target.classList.contains("sel")){var n=notes.find(function(x){return x.id===e.target.dataset.id;});if(n){n.sel=e.target.checked;persist();}}};
 $("list").onclick=function(e){var b=e.target.closest("button");if(!b)return;var n=notes.find(function(x){return x.id===b.dataset.id;});if(!n)return;
-if(b.dataset.a==="done")n.done=!n.done;else if(confirm("Notiz wirklich löschen?"))notes=notes.filter(function(x){return x!==n;});persist();render();};
+var a=b.dataset.a;if(a==="rw"){rewriteNotes([n]);return;}if(a==="sp"){speak([n]);return;}if(a==="so"){n.showOrig=!n.showOrig;persist();render();return;}
+if(a==="undo"){if(n.orig&&confirm("Originaltext wiederherstellen?")){n.text=n.orig;delete n.orig;n.showOrig=false;persist();render();}return;}
+if(a==="done")n.done=!n.done;else if(confirm("Notiz wirklich löschen?"))notes=notes.filter(function(x){return x!==n;});persist();render();};
 ["search","fcat","fstat"].forEach(function(id){$(id).addEventListener("input",render);});
 // export
 $("csv").onclick=function(){var q=function(s){return '"'+String(s).replace(/"/g,'""')+'"';};
@@ -100,17 +117,18 @@ if(navigator.clipboard&&window.isSecureContext)navigator.clipboard.writeText(txt
 function fb(){var t=document.createElement("textarea");t.value=txt;document.body.appendChild(t);t.select();try{document.execCommand("copy");ok();}catch(e){alert(txt);}t.remove();}};
 
 // Korrektur
-function applyLT(text,matches){var ms=matches.filter(function(m){return m.replacements&&m.replacements.length;}).sort(function(a,b){return b.offset-a.offset;});
-var out=text,lastStart=Infinity;ms.forEach(function(m){if(m.offset+m.length>lastStart)return;var orig=text.substr(m.offset,m.length),rep=m.replacements.find(function(r){return r.value.toLowerCase()===orig.toLowerCase();})||m.replacements[0];out=out.slice(0,m.offset)+rep.value+out.slice(m.offset+m.length);lastStart=m.offset;});
+function lev(a,b){var d=[],i,j;for(i=0;i<=a.length;i++)d[i]=[i];for(j=0;j<=b.length;j++)d[0][j]=j;for(i=1;i<=a.length;i++)for(j=1;j<=b.length;j++)d[i][j]=Math.min(d[i-1][j]+1,d[i][j-1]+1,d[i-1][j-1]+(a[i-1]===b[j-1]?0:1));return d[a.length][b.length];}
+function applyLT(text,matches){var ms=matches.filter(function(m){if(!(m.replacements&&m.replacements.length))return false;if(m.rule&&/SPELLER/.test(m.rule.id)){var o=text.substr(m.offset,m.length).toLowerCase();return m.replacements.some(function(r){return r.value.toLowerCase()===o||(o.length<=8&&lev(r.value.toLowerCase(),o)<=1&&r.value.length>=o.length);});}return true;}).sort(function(a,b){return b.offset-a.offset;});
+var out=text,lastStart=Infinity;ms.forEach(function(m){if(m.offset+m.length>lastStart)return;var orig=text.substr(m.offset,m.length),rep=m.replacements.find(function(r){return r.value.toLowerCase()===orig.toLowerCase();})||m.replacements.find(function(r){return lev(r.value.toLowerCase(),orig.toLowerCase())<=1&&r.value.length>=orig.length;})||m.replacements[0];out=out.slice(0,m.offset)+rep.value+out.slice(m.offset+m.length);lastStart=m.offset;});
 out=out.trim().replace(/\s+/g," ");if(out)out=out.charAt(0).toUpperCase()+out.slice(1);if(out&&!/[.!?…:]$/.test(out))out+=".";return out;}
 window.__applyLT=applyLT;
 var origText="",busy=false;
 var SYS="Formuliere die folgende diktierte Arbeitsnotiz in klares, korrektes Deutsch um (Rechtschreibung, Grammatik, Kommas, Wortstellung, Satzbau). Bedeutung, Namen und alle Fakten beibehalten, nichts hinzufügen, knapp im Stil einer Arbeitsnotiz. Antworte NUR mit dem umformulierten Text, ohne Erklärung, ohne Anführungszeichen.";
 function withTimeout(pr,ms){return Promise.race([pr,new Promise(function(_,r){setTimeout(function(){r(new Error("timeout"));},ms);})]);}
-function llm(t){return withTimeout(fetch("https://text.pollinations.ai/openai",{method:"POST",headers:{"Content-Type":"application/json"},
-body:JSON.stringify({model:"openai",messages:[{role:"system",content:SYS},{role:"user",content:t}]})}).then(function(r){if(!r.ok)throw new Error(r.status);return r.json();})
+function llm(t,sys){return withTimeout(fetch("https://text.pollinations.ai/openai",{method:"POST",headers:{"Content-Type":"application/json"},
+body:JSON.stringify({model:"openai",messages:[{role:"system",content:sys||SYS},{role:"user",content:t}]})}).then(function(r){if(!r.ok)throw new Error(r.status);return r.json();})
 .then(function(d){var c=(d.choices&&d.choices[0]&&d.choices[0].message&&d.choices[0].message.content||"").trim().replace(/^["„“»]+|["“”«]+$/g,"").trim();
-if(!c||c.length>t.length*3+80)throw new Error("bad");return c;}),25000);}
+if(!c||c.length>t.length*3+80)throw new Error("bad");return c;}),45000);}
 function lt(t){return withTimeout(fetch("https://api.languagetool.org/v2/check",{method:"POST",body:new URLSearchParams({text:t,language:"de-DE"})})
 .then(function(r){if(!r.ok)throw new Error(r.status);return r.json();}).then(function(d){return applyLT(t,d.matches||[]);}),15000);}
 function correct(){var t=$("text").value.trim();if(!t||busy)return;$("corr").hidden=false;$("corrUndo").hidden=true;
@@ -135,6 +153,33 @@ rec.onerror=function(e){$("status").textContent=e.error==="not-allowed"?"Mikrofo
 rec.onend=function(){var was=on;on=false;if(was)setTimeout(correct,300);$("mic").classList.remove("on");$("mic").textContent="🎤 Diktieren";};
 $("mic").onclick=function(){if(on){rec.stop();return;}base=$("text").value.trim();$("status").textContent="";try{rec.start();on=true;$("mic").classList.add("on");$("mic").textContent="⏹ Stopp";}catch(e){$("status").textContent="Spracheingabe konnte nicht gestartet werden.";}};}
 render();
+
+// ---- Schulung: umformulieren, vorlesen, drucken ----
+var SYS_TRAIN="Formuliere die folgende Arbeitsnotiz in klares, korrektes und gut verständliches Deutsch, so dass sie in einer Mitarbeiter-Schulung laut vorgelesen werden kann: vollständige Sätze, klare Anweisungen, korrekte Rechtschreibung, Grammatik und Kommas. Alle Fakten, Namen, Nummern und Werte unverändert beibehalten, nichts erfinden oder hinzufügen. Kurz und sachlich. Antworte NUR mit dem fertigen Text, ohne Überschrift, ohne Erklärung, ohne Anführungszeichen.";
+function targets(){var l=filtered(),s=l.filter(function(n){return n.sel;});return s.length?s:l;}
+var rwBusy=false;
+function sleep(ms){return new Promise(function(r){setTimeout(r,ms);});}
+async function llmRetry(t,sys,cb){for(var k=1;k<=3;k++){cb&&cb(k);try{return await llm(t,sys);}catch(e){if(k===3)throw e;await sleep(4000*k);}}}
+async function rewriteNotes(list){if(rwBusy)return;if(!navigator.onLine){$("rwProg").textContent="Offline – Umformulieren nicht möglich.";return;}rwBusy=true;var ok=0,fb=0,err=0;
+ for(var i=0;i<list.length;i++){var n=list[i],t=n.text;$("rwProg").textContent="⏳ Umformulieren "+(i+1)+"/"+list.length+" …";var c=null;
+  try{c=await llmRetry(t,SYS_TRAIN,function(k){$("rwProg").textContent="⏳ Umformulieren "+(i+1)+"/"+list.length+" … (Versuch "+k+"/3)";});}catch(e){try{c=await lt(t);fb++;}catch(e2){err++;}}
+  if(c&&c!==t){if(!n.orig)n.orig=t;n.text=c;ok++;persist();render();}}
+ rwBusy=false;$("rwProg").textContent="✅ Fertig: "+ok+" umformuliert"+(fb?" ("+fb+" nur korrigiert, KI nicht erreichbar)":"")+(err?", "+err+" fehlgeschlagen":"")+". Originale bleiben erhalten (↩ Rückgängig).";}
+$("rwAll").onclick=function(){var l=targets();if(!l.length)return;if(confirm(l.length+" Notiz(en) umformulieren? Das Original bleibt gespeichert."))rewriteNotes(l);};
+function speak(list){if(!("speechSynthesis" in window)){alert("Vorlesen wird von diesem Browser nicht unterstützt.");return;}speechSynthesis.cancel();
+ var v=speechSynthesis.getVoices().filter(function(x){return /^de/i.test(x.lang);})[0];
+ list.forEach(function(n){var u=new SpeechSynthesisUtterance(n.text);u.lang="de-DE";if(v)u.voice=v;u.rate=0.95;speechSynthesis.speak(u);});}
+$("spAll").onclick=function(){speak(targets());};$("spStop").onclick=function(){if("speechSynthesis" in window)speechSynthesis.cancel();};
+$("selAll").onclick=function(){filtered().forEach(function(n){n.sel=true;});persist();render();};
+$("selNone").onclick=function(){notes.forEach(function(n){n.sel=false;});persist();render();};
+function buildPrint(list){var g={},order=["Schulung","Anlage","Mitarbeiter","Aufgabe","Sonstiges","Ohne Kategorie"];
+ list.forEach(function(n){var c=n.cats&&n.cats.length?n.cats[0]:"Ohne Kategorie";(g[c]=g[c]||[]).push(n);});
+ var h='<h1>'+esc($("ptitle").value.trim()||"Schulung")+'</h1><div class="pdate">Datum: '+new Date().toLocaleDateString("de-DE",{day:"2-digit",month:"2-digit",year:"numeric"})+'</div>';
+ order.concat(Object.keys(g).filter(function(k){return order.indexOf(k)<0;})).forEach(function(c){if(!g[c])return;
+  h+='<h2>'+esc(c)+'</h2><ol>'+g[c].slice().reverse().map(function(n){return '<li>'+esc(n.text)+(n.person?'<div class="pp">Person: '+esc(n.person)+'</div>':'')+'</li>';}).join("")+'</ol>';});
+ $("printArea").innerHTML=h;}
+$("prt").onclick=function(){var l=targets();if(!l.length){alert("Keine Notizen zum Drucken.");return;}buildPrint(l);setTimeout(function(){window.print();},50);};
+window.__buildPrint=buildPrint;
 // Tabs
 function tab(t){var T=t==="tafel";$("tabNotes").hidden=T;$("tafelFrame").hidden=!T;if(T&&!$("tafelFrame").src)$("tafelFrame").src="tafel/";
  $("tbN").classList.toggle("act",!T);$("tbT").classList.toggle("act",T);localStorage.setItem("arbeit_tab",t);}
