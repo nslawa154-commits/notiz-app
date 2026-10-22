@@ -19,6 +19,7 @@ table{width:100%;border-collapse:collapse;font-size:16px}td,th{padding:6px 4px;b
 .ok{color:#2e7d32;font-weight:700}.cand{color:#ef6c00;font-weight:700}.no{color:#c62828}
 canvas{width:100%;height:auto;border-radius:10px;margin-top:8px;touch-action:pinch-zoom}.small{font-size:13px;color:#666}
 .del{background:#fde7e9;min-height:36px;padding:4px 10px}.thumbs{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}.th{position:relative}.th img{height:80px;border-radius:6px;display:block}.th button{position:absolute;top:-6px;right:-6px;min-height:30px;width:30px;padding:0;border-radius:15px;background:#c62828;color:#fff}.th span{position:absolute;left:4px;bottom:2px;color:#fff;font-weight:700;text-shadow:0 0 3px #000}
+.embedded header{padding:10px 16px}
 </style>
 </head>
 <body>
@@ -36,6 +37,7 @@ canvas{width:100%;height:auto;border-radius:10px;margin-top:8px;touch-action:pin
 <table><thead><tr><th>FAUF</th><th>Wkz.Nr</th><th>Status</th><th></th></tr></thead><tbody id="list"></tbody></table>
 <div class="row"><input type="text" id="mf" inputmode="numeric" placeholder="FAUF (7-stellig)"><input type="text" id="mw" placeholder="Wkz.Nr (z. B. 36511)"></div>
 <div class="row"><button id="madd">➕ Manuell hinzufügen</button><button id="mclr">🗑 Liste leeren</button></div>
+<div class="row"><button id="allclr" class="del">⚠️ Alles löschen (Fotos, Liste, Ergebnisse)</button></div>
 <div class="small">Liste wird auf dem Gerät gespeichert. Bitte grüne Zeilen kurz mit dem Foto vergleichen.</div>
 </section>
 <section class="card">
@@ -51,13 +53,14 @@ canvas{width:100%;height:auto;border-radius:10px;margin-top:8px;touch-action:pin
 </main>
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@7/dist/tesseract.min.js"></script>
 <script src="core.js"></script>
+<script>if(window.self!==window.top)document.documentElement.classList.add("embedded");</script>
 <script>
 (function(){
 "use strict";
 var $=function(i){return document.getElementById(i);},KEY="tafelfinder_liste_v1";
 var items=[];try{items=JSON.parse(localStorage.getItem(KEY))||[];}catch(e){}
 var results=null,worker=null;
-function save(){localStorage.setItem(KEY,JSON.stringify(items));}
+function save(){localStorage.setItem(KEY,JSON.stringify(items));if(typeof persistItems==="function")persistItems();}
 function esc(s){return String(s).replace(/[&<>"]/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c];});}
 function render(){var h="";items.forEach(function(it,i){var st="",r=results&&results[i];
  if(r)st=r.status==="sicher"?'<span class="ok">✔ Nr. '+(i+1)+(r.where?' (Foto '+r.where.join(', ')+')':'')+'</span>':r.status==="kandidat"?'<span class="cand">? Nr. '+(i+1)+(r.where?' (Foto '+r.where.join(', ')+')':'')+'</span>':'<span class="no">✗ nicht gefunden</span>';
@@ -65,7 +68,7 @@ function render(){var h="";items.forEach(function(it,i){var st="",r=results&&res
  $("list").innerHTML=h||'<tr><td colspan="4" class="small">Noch keine Einträge.</td></tr>';}
 $("list").onclick=function(e){var b=e.target.closest("button");if(!b)return;items.splice(+b.dataset.i,1);results=null;save();render();};
 $("madd").onclick=function(){var f=$("mf").value.replace(/\D/g,""),w=$("mw").value.trim();if(!f&&!w)return;items.push({fauf:f,wkz:w});$("mf").value="";$("mw").value="";results=null;save();render();};
-$("mclr").onclick=function(){if(confirm("Liste wirklich leeren?")){items=[];results=null;save();render();}};
+$("mclr").onclick=function(){if(confirm("Liste wirklich leeren?")){items=[];results=null;save();kvSet("results",null);render();}};
 function loadImg(file){return new Promise(function(res,rej){var u=URL.createObjectURL(file),im=new Image();im.onload=function(){res(im);};im.onerror=rej;im.src=u;});}
 function canvasOf(im,w,gray,crop){crop=crop||[0,0,im.naturalWidth,im.naturalHeight];var s=w/crop[2],c=document.createElement("canvas");c.width=Math.round(crop[2]*s);c.height=Math.round(crop[3]*s);
  var x=c.getContext("2d");x.drawImage(im,crop[0],crop[1],crop[2],crop[3],0,0,c.width,c.height);
@@ -76,11 +79,19 @@ function getWorker(prog){if(worker)return worker;worker=Tesseract.createWorker("
  .then(function(w){return w.setParameters({tessedit_pageseg_mode:"11"}).then(function(){return w;});});return worker;}
 function ocr(canvas,prog){return getWorker(prog).then(function(w){return w.recognize(canvas,{},{blocks:true});}).then(function(r){var out=[];
  (r.data.blocks||[]).forEach(function(b){b.paragraphs.forEach(function(p){p.lines.forEach(function(l){l.words.forEach(function(x){out.push({t:x.text,b:x.bbox});});});});});return out;});}
+// ---- IndexedDB: Fotos + Ergebnisse dauerhaft speichern ----
+var DBP=new Promise(function(res,rej){var r=indexedDB.open("tafelfinder",1);r.onupgradeneeded=function(){var d=r.result;d.createObjectStore("photos",{keyPath:"id"});d.createObjectStore("kv");};r.onsuccess=function(){res(r.result);};r.onerror=function(){rej(r.error);};});
+function tx(store,mode,fn){return DBP.then(function(d){return new Promise(function(res,rej){var t=d.transaction(store,mode),st=t.objectStore(store),out=fn(st);t.oncomplete=function(){res(out&&out.result);};t.onerror=function(){rej(t.error);};});});}
+function kvSet(k,v){return tx("kv","readwrite",function(s){s.put(v,k);});}
+function kvGet(k){return tx("kv","readonly",function(s){return s.get(k);});}
+function savePhoto(kind,f){f._id=f._id||(Date.now()+"_"+Math.random().toString(36).slice(2,7));return tx("photos","readwrite",function(s){s.put({id:f._id,kind:kind,ts:Date.now(),blob:f});});}
+function delPhoto(id){return tx("photos","readwrite",function(s){s.delete(id);});}
+function persistItems(){kvSet("items",items).catch(function(){});}
 var exFiles=[],bdFiles=[];
 function thumbs(arr,el){el.innerHTML="";arr.forEach(function(f,i){var d=document.createElement("div");d.className="th";var im=document.createElement("img");
  if(!f._u)f._u=URL.createObjectURL(f);im.src=f._u;var b=document.createElement("button");b.textContent="✕";b.title="Entfernen";
- b.onclick=function(){URL.revokeObjectURL(f._u);arr.splice(i,1);thumbs(arr,el);};var n=document.createElement("span");n.textContent=i+1;d.appendChild(im);d.appendChild(n);d.appendChild(b);el.appendChild(d);});}
-function adder(inp,arr,el){$(inp).onchange=function(){Array.from(this.files).forEach(function(f){arr.push(f);});this.value="";thumbs(arr,el);};}
+ b.onclick=function(){if(!confirm("Dieses Foto wirklich entfernen?"))return;URL.revokeObjectURL(f._u);arr.splice(i,1);delPhoto(f._id);thumbs(arr,el);};var n=document.createElement("span");n.textContent=i+1;d.appendChild(im);d.appendChild(n);d.appendChild(b);el.appendChild(d);});}
+function adder(inp,arr,el){$(inp).onchange=function(){var kind=arr===exFiles?"ex":"bd";Array.from(this.files).forEach(function(f){arr.push(f);savePhoto(kind,f).catch(function(e){alert("Foto konnte nicht gespeichert werden: "+e.message);});});this.value="";thumbs(arr,el);};}
 adder("fxc",exFiles,$("tx"));adder("fxg",exFiles,$("tx"));adder("fbc",bdFiles,$("tb"));adder("fbg",bdFiles,$("tb"));
 // Bild laden + verkleinern (spart Speicher)
 function loadScaled(file,maxDim){return loadImg(file).then(function(im){var W=im.naturalWidth,H=im.naturalHeight,s=Math.min(1,maxDim/Math.max(W,H));
@@ -99,12 +110,12 @@ $("bx").onclick=async function(){if(!exFiles.length){alert("Bitte zuerst Excel-F
  catch(e){$("px").textContent="Fehler bei der Auswertung: "+e.message;}
  results=null;save();render();};
 function drawBoard(c,im,matches){var W=im.width,H=im.height;c.width=W;c.height=H;var x=c.getContext("2d");x.drawImage(im,0,0);
- var lw=Math.max(8,W/120);x.strokeStyle="#9c27b0";x.fillStyle="#9c27b0";x.font="bold "+Math.round(W/35)+"px sans-serif";
+ var lw=Math.max(8,W/120);x.strokeStyle="#8e24aa";x.fillStyle="#8e24aa";x.font="bold "+Math.round(W/35)+"px sans-serif";
  matches.forEach(function(m,i){m.cards.forEach(function(cd){var r=Math.max(cd.r,W/14);x.lineWidth=m.status==="sicher"?lw:lw*0.6;x.setLineDash(m.status==="sicher"?[]:[lw*2,lw*1.5]);
   x.beginPath();x.ellipse(cd.x,cd.y,r,r*0.85,0,0,Math.PI*2);x.stroke();x.setLineDash([]);x.fillText((i+1)+(m.status==="sicher"?"":"?"),cd.x-r,cd.y-r*0.85);});});}
 $("bb").onclick=async function(){if(!bdFiles.length){alert("Bitte zuerst Tafel-Foto(s) hinzufügen.");return;}if(!items.length){alert("Liste ist leer.");return;}
  if(typeof Tesseract==="undefined"){$("pb").textContent="Texterkennung nicht geladen (Internet?).";return;}
- $("boards").innerHTML="";var comb=items.map(function(it){return{item:it,status:"nicht gefunden",where:[]};});
+ $("boards").innerHTML="";var outs=[];var comb=items.map(function(it){return{item:it,status:"nicht gefunden",where:[]};});
  try{for(var bi=0;bi<bdFiles.length;bi++){var im=await loadScaled(bdFiles[bi],4200),W=im.width,H=im.height,cols=2,rows=3,ov=Math.round(W/12),all=[],n=0;
   for(var r=0;r<rows;r++)for(var c=0;c<cols;c++){n++;var x0=Math.max(0,Math.round(c*W/cols-ov)),y0=Math.max(0,Math.round(r*H/rows-ov)),x1=Math.min(W,Math.round((c+1)*W/cols+ov)),y1=Math.min(H,Math.round((r+1)*H/rows+ov));
    var tw=Math.min(2600,Math.round((x1-x0)*1.5)),sc=tw/(x1-x0),cv=canvasOf(im,tw,true,[x0,y0,x1-x0,y1-y0]);
@@ -116,10 +127,23 @@ $("bb").onclick=async function(){if(!bdFiles.length){alert("Bitte zuerst Tafel-F
   h.textContent="Tafel-Foto "+(bi+1)+": "+cards.length+" Karten · "+s1+" sicher · "+k1+" prüfen";box.appendChild(h);
   var out=document.createElement("canvas");drawBoard(out,im,res);box.appendChild(out);
   var dl=document.createElement("button");dl.textContent="⬇ Bild "+(bi+1)+" speichern";(function(o,i){dl.onclick=function(){o.toBlob(function(b){var a=document.createElement("a");a.href=URL.createObjectURL(b);a.download="tafel_"+i+"_markiert.jpg";a.click();},"image/jpeg",0.85);};})(out,bi+1);
-  box.appendChild(dl);$("boards").appendChild(box);im.width=0;await tick();}
-  results=comb;render();var s=comb.filter(function(m){return m.status==="sicher";}).length,k=comb.filter(function(m){return m.status==="kandidat";}).length;
-  $("pb").textContent="✅ Gesamt ("+bdFiles.length+" Foto(s)): "+s+" sicher · "+k+" zu prüfen · "+(items.length-s-k)+" nicht gefunden";}
+  box.appendChild(dl);$("boards").appendChild(box);outs.push(await new Promise(function(r){out.toBlob(function(b){r({title:h.textContent,blob:b});},"image/jpeg",0.85);}));im.width=0;await tick();}
+  results=comb;render();kvSet("boards",outs);kvSet("results",comb);var s=comb.filter(function(m){return m.status==="sicher";}).length,k=comb.filter(function(m){return m.status==="kandidat";}).length;
+  $("pb").textContent="✅ Gesamt ("+bdFiles.length+" Foto(s)): "+s+" sicher · "+k+" zu prüfen · "+(items.length-s-k)+" nicht gefunden";kvSet("pb",$("pb").textContent);}
  catch(e){$("pb").textContent="Fehler: "+e.message;}};
+
+function showBoards(outs){$("boards").innerHTML="";(outs||[]).forEach(function(o,i){var box=document.createElement("div"),h=document.createElement("h2");h.textContent=o.title+" (gespeichert)";
+ var im=document.createElement("img");im.src=URL.createObjectURL(o.blob);im.style.width="100%";im.style.borderRadius="10px";var a=document.createElement("a");a.href=im.src;a.download="tafel_"+(i+1)+"_markiert.jpg";a.textContent="⬇ Bild "+(i+1)+" speichern";a.className="file";
+ box.appendChild(h);box.appendChild(im);box.appendChild(a);$("boards").appendChild(box);});}
+DBP.then(function(){return tx("photos","readonly",function(s){return s.getAll();});}).then(function(all){(all||[]).sort(function(a,b){return a.ts-b.ts;}).forEach(function(r){var b=r.blob;b._id=r.id;(r.kind==="ex"?exFiles:bdFiles).push(b);});
+ thumbs(exFiles,$("tx"));thumbs(bdFiles,$("tb"));return Promise.all([kvGet("items"),kvGet("results"),kvGet("boards"),kvGet("pb")]);})
+ .then(function(v){if((!items||!items.length)&&v[0]&&v[0].length){items=v[0];localStorage.setItem(KEY,JSON.stringify(items));}
+  if(v[1]&&v[1].length===items.length)results=v[1];showBoards(v[2]);if(v[3])$("pb").textContent=v[3];render();})
+ .catch(function(e){$("pb").textContent="Speicher nicht verfügbar: "+e.message;});
+if(navigator.storage&&navigator.storage.persist)navigator.storage.persist();
+$("allclr").onclick=function(){if(!confirm("Wirklich ALLES löschen? Alle Fotos, die Liste und die Ergebnisse gehen verloren."))return;
+ Promise.all([tx("photos","readwrite",function(s){s.clear();}),tx("kv","readwrite",function(s){s.clear();})]).then(function(){exFiles.length=0;bdFiles.length=0;items=[];results=null;localStorage.removeItem(KEY);
+ thumbs(exFiles,$("tx"));thumbs(bdFiles,$("tb"));$("boards").innerHTML="";$("pb").textContent="";$("px").textContent="";render();});};
 render();
 })();
 </script>

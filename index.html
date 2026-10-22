@@ -6,8 +6,8 @@
 <meta name="theme-color" content="#1565c0">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-title" content="Notizen">
-<title>Arbeitsnotizen</title>
+<meta name="apple-mobile-web-app-title" content="Arbeit">
+<title>Arbeit</title>
 <link rel="manifest" id="mf">
 <style>
 *{box-sizing:border-box}body{margin:0;font-family:system-ui,sans-serif;background:#f2f4f7;color:#1a1a1a;font-size:17px}
@@ -22,9 +22,14 @@ button{font-size:17px;min-height:48px;padding:10px 16px;border:0;border-radius:1
 .meta{font-size:14px;color:#556;margin-bottom:6px}.t{white-space:pre-wrap;word-wrap:break-word}.tag{background:#e8eef7;border-radius:8px;padding:2px 8px;margin-right:4px}
 .small{font-size:15px;min-height:44px}#status{font-size:14px;color:#d32f2f;margin-top:6px}.empty{text-align:center;color:#778;padding:20px}
 .corr{margin-top:10px;background:#fff8e1;border:1px solid #f0c36d;border-radius:10px;padding:10px}
+body{padding-bottom:70px}
+#tabs{position:fixed;left:0;right:0;bottom:0;display:flex;background:#fff;box-shadow:0 -1px 4px #0003;z-index:20;padding-bottom:env(safe-area-inset-bottom)}
+#tabs button{flex:1;border-radius:0;background:#fff;min-height:60px;font-size:17px;color:#555}#tabs button.act{color:#1565c0;font-weight:700;border-top:3px solid #1565c0}
+#tafelFrame{position:fixed;top:0;left:0;width:100%;height:calc(100% - 60px - env(safe-area-inset-bottom));border:0;background:#f3f0f7}
 </style>
 </head>
 <body>
+<div id="tabNotes">
 <header><h1>📝 Arbeitsnotizen</h1></header>
 <main>
 <section class="card">
@@ -45,6 +50,9 @@ button{font-size:17px;min-height:48px;padding:10px 16px;border:0;border-radius:1
 </section>
 <div id="list"></div>
 </main>
+</div>
+<iframe id="tafelFrame" title="Tafel-Finder" hidden></iframe>
+<nav id="tabs"><button id="tbN" class="act">📝 Notizen</button><button id="tbT">🔍 Tafel-Finder</button></nav>
 <script>
 (function(){
 "use strict";
@@ -57,7 +65,7 @@ function fmt(ts){return new Date(ts).toLocaleString("de-DE",{dateStyle:"short",t
 function esc(s){return String(s).replace(/[&<>"']/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c];});}
 // manifest
 var icon="data:image/svg+xml,"+encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" rx="20" fill="#1565c0"/><text x="50" y="68" font-size="60" text-anchor="middle">📝</text></svg>');
-var mf={name:"Arbeitsnotizen",short_name:"Notizen",start_url:".",display:"standalone",background_color:"#f2f4f7",theme_color:"#1565c0",icons:[{src:icon,sizes:"any",type:"image/svg+xml"}]};
+var mf={name:"Arbeit – Notizen & Tafel-Finder",short_name:"Arbeit",start_url:".",display:"standalone",background_color:"#f2f4f7",theme_color:"#1565c0",icons:[{src:icon,sizes:"any",type:"image/svg+xml"}]};
 $("mf").href="data:application/manifest+json,"+encodeURIComponent(JSON.stringify(mf));
 var al=document.createElement("link");al.rel="apple-touch-icon";al.href=icon;document.head.appendChild(al);
 // chips
@@ -127,6 +135,11 @@ rec.onerror=function(e){$("status").textContent=e.error==="not-allowed"?"Mikrofo
 rec.onend=function(){var was=on;on=false;if(was)setTimeout(correct,300);$("mic").classList.remove("on");$("mic").textContent="🎤 Diktieren";};
 $("mic").onclick=function(){if(on){rec.stop();return;}base=$("text").value.trim();$("status").textContent="";try{rec.start();on=true;$("mic").classList.add("on");$("mic").textContent="⏹ Stopp";}catch(e){$("status").textContent="Spracheingabe konnte nicht gestartet werden.";}};}
 render();
+// Tabs
+function tab(t){var T=t==="tafel";$("tabNotes").hidden=T;$("tafelFrame").hidden=!T;if(T&&!$("tafelFrame").src)$("tafelFrame").src="tafel/";
+ $("tbN").classList.toggle("act",!T);$("tbT").classList.toggle("act",T);localStorage.setItem("arbeit_tab",t);}
+$("tbN").onclick=function(){tab("notes");};$("tbT").onclick=function(){tab("tafel");};
+tab(localStorage.getItem("arbeit_tab")==="tafel"||location.hash==="#tafel"?"tafel":"notes");
 })();
 </script>
 </body>
