@@ -2,7 +2,7 @@
 <html lang="de">
 <head>
 <meta charset="UTF-8">
-<meta name="app-version" content="1.8 (23.10.2026)">
+<meta name="app-version" content="1.9 (23.10.2026)">
 <meta http-equiv="Cache-Control" content="no-cache">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#1565c0">
@@ -35,12 +35,21 @@ body{padding-bottom:70px}
 @media print{body{background:#fff;padding:0}body>*{display:none!important}#printArea{display:block!important;font-family:Georgia,serif;font-size:16pt;line-height:1.5;color:#000}
 #printArea h1{font-size:24pt;margin:0 0 4pt}#printArea .pdate{font-size:12pt;color:#333;margin-bottom:14pt}#printArea h2{font-size:18pt;border-bottom:1.5pt solid #000;margin:16pt 0 6pt;page-break-after:avoid}
 #printArea li{margin-bottom:10pt;page-break-inside:avoid}#printArea .pp{font-size:12pt;color:#333}@page{margin:18mm}}
+#instBar{position:sticky;top:0;z-index:30;background:#1565c0;padding:8px 10px}
+#inst{width:100%;min-height:58px;font-size:clamp(16px,4.6vw,20px);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:800;border-radius:14px;color:#fff;background:linear-gradient(90deg,#ff6f00,#e91e63,#8e24aa);box-shadow:0 3px 8px #0004;letter-spacing:.2px}
+#instOv{position:fixed;inset:0;background:#000a;z-index:100;display:flex;align-items:center;justify-content:center;padding:14px}#instOv[hidden]{display:none}
+.ovbox{background:#fff;border-radius:18px;max-width:520px;width:100%;max-height:92vh;overflow:auto;padding:18px 18px 22px;position:relative;font-size:18px;line-height:1.45}
+.ovx{position:absolute;top:8px;right:8px;min-height:44px;width:44px;border-radius:22px;font-size:20px}
+.ovbox h3{margin:14px 0 6px;font-size:20px}.step{display:flex;gap:12px;align-items:flex-start;margin:10px 0}.step .n{flex:0 0 40px;height:40px;border-radius:20px;background:#1565c0;color:#fff;font-weight:800;display:flex;align-items:center;justify-content:center;font-size:20px}
+.step .k{display:inline-block;border:2px solid #333;border-radius:8px;padding:0 8px;font-weight:800;background:#f5f5f5}.arrow{font-size:26px;text-align:center;color:#e91e63;margin:-4px 0}
+body.hasBar header{top:var(--bh,74px)}body.hasBar #tafelFrame{top:var(--bh,74px);height:calc(100% - var(--bh,74px) - 60px - env(safe-area-inset-bottom))}
 </style>
 </head>
 <body>
+<div id="instBar"><button id="inst" type="button">📲 Symbol auf Startbildschirm legen</button></div>
+<div id="instOv" hidden><div class="ovbox"><button id="instX" class="ovx" type="button" aria-label="Schließen">✕</button><div id="instHelp"></div></div></div>
 <div id="tabNotes">
-<header><h1>📝 Arbeitsnotizen <small style="font-size:12px;opacity:.8">v1.8 (23.10.2026)</small></h1></header>
-<div style="padding:6px 12px 0;max-width:720px;margin:auto"><button id="inst" type="button" class="small" style="width:100%;background:#e3f2fd">📲 Auf Startbildschirm</button><div id="instHelp" class="small" hidden style="background:#fff;border-radius:10px;padding:10px;margin-top:6px;line-height:1.5;font-size:15px"></div></div>
+<header><h1>📝 Arbeitsnotizen <small style="font-size:12px;opacity:.8">v1.9 (23.10.2026)</small></h1></header>
 <div id="upd" hidden style="background:#ffeb3b;padding:12px;text-align:center;font-weight:700;cursor:pointer">🔄 Neue Version verfügbar – hier tippen zum Aktualisieren</div>
 <main>
 <section class="card">
@@ -191,12 +200,19 @@ checkUpd();document.addEventListener("visibilitychange",function(){if(!document.
 if("serviceWorker" in navigator)navigator.serviceWorker.register("sw.js",{scope:"./"}).catch(function(){});
 // Installieren
 var deferredPrompt=null;window.addEventListener("beforeinstallprompt",function(e){e.preventDefault();deferredPrompt=e;});
-var standalone=window.matchMedia("(display-mode: standalone)").matches||navigator.standalone;if(standalone)$("inst").hidden=true;
-window.addEventListener("appinstalled",function(){$("inst").hidden=true;$("instHelp").hidden=false;$("instHelp").textContent="✅ Installiert – „Arbeitsapp“ liegt jetzt auf dem Startbildschirm.";});
-$("inst").onclick=function(){var h=$("instHelp");if(deferredPrompt){deferredPrompt.prompt();deferredPrompt.userChoice.then(function(){deferredPrompt=null;});return;}
- var ios=/iphone|ipad|ipod/i.test(navigator.userAgent)||(navigator.platform==="MacIntel"&&navigator.maxTouchPoints>1);h.hidden=!h.hidden;
- h.innerHTML=ios?"<b>iPhone/iPad (Safari):</b><br>1. Unten auf <b>Teilen</b> (Viereck mit Pfeil ⬆️) tippen<br>2. <b>„Zum Home-Bildschirm“</b> wählen<br>3. Oben rechts <b>„Hinzufügen“</b>.<br><span style='color:#777'>Nur in Safari möglich, nicht in Chrome auf dem iPhone.</span>"
-  :"<b>Android (Chrome):</b><br>1. Oben rechts auf <b>⋮</b> (drei Punkte) tippen<br>2. <b>„Zum Startbildschirm hinzufügen“</b> bzw. <b>„App installieren“</b> wählen<br>3. <b>„Hinzufügen“</b> / <b>„Installieren“</b> bestätigen.<br><span style='color:#777'>Samsung Internet: Menü ☰ → „Seite hinzufügen zu“ → „Startbildschirm“.</span>";};
+var standalone=window.matchMedia("(display-mode: standalone)").matches||window.navigator.standalone===true;
+if(standalone){$("instBar").hidden=true;}else{document.body.classList.add("hasBar");var setBH=function(){document.body.style.setProperty("--bh",$("instBar").offsetHeight+"px");};setBH();window.addEventListener("resize",setBH);}
+window.addEventListener("appinstalled",function(){showOv('<h3>✅ Fertig!</h3><p>Das Symbol <b>„Arbeitsapp“</b> liegt jetzt auf dem Startbildschirm. Ab jetzt die App dort öffnen.</p>');});
+function showOv(h){$("instHelp").innerHTML=h;$("instOv").hidden=false;}
+$("instX").onclick=function(){$("instOv").hidden=true;};$("instOv").onclick=function(e){if(e.target===this)this.hidden=true;};
+function st(n,t){return '<div class="step"><div class="n">'+n+'</div><div>'+t+'</div></div>';}
+var AR='<div class="arrow">⬇</div>';
+var IOS='<h3>🍎 iPhone / iPad (Safari)</h3>'+st(1,'Diese Seite in <b>Safari</b> öffnen (nicht Chrome).')+AR+st(2,'Unten in der Leiste auf <span class="k">⬆️ Teilen</span> tippen (Viereck mit Pfeil nach oben).')+AR+st(3,'Etwas nach unten wischen und <b>„Zum Home-Bildschirm“</b> ➕ antippen.')+AR+st(4,'Oben rechts auf <b>„Hinzufügen“</b> tippen. Fertig – Symbol „Arbeitsapp“ 📝🔍.');
+var AND='<h3>🤖 Android – Chrome</h3>'+st(1,'Oben rechts auf <span class="k">⋮</span> (drei Punkte) tippen.')+AR+st(2,'<b>„App installieren“</b> oder <b>„Zum Startbildschirm hinzufügen“</b> wählen.')+AR+st(3,'<b>„Installieren“</b> bzw. <b>„Hinzufügen“</b> bestätigen.')+
+ '<h3>📱 Samsung Internet</h3>'+st(1,'Unten rechts auf <span class="k">☰</span> (Menü) tippen.')+AR+st(2,'<b>„Seite hinzufügen zu“</b> → <b>„Startbildschirm“</b>.')+AR+st(3,'<b>„Hinzufügen“</b> bestätigen.');
+$("inst").onclick=function(){if(deferredPrompt){var d=deferredPrompt;deferredPrompt=null;d.prompt();d.userChoice.then(function(c){if(c&&c.outcome!=="accepted")showOv('<p>Kein Problem – so geht es auch von Hand:</p>'+AND);});return;}
+ var ios=/iphone|ipad|ipod/i.test(navigator.userAgent)||(navigator.platform==="MacIntel"&&navigator.maxTouchPoints>1);
+ showOv('<h2 style="margin:0 0 4px">📲 Symbol auf den Startbildschirm</h2><p style="margin:0;color:#555">Danach öffnet sich die App wie eine normale App – auch ohne Internet.</p>'+(ios?IOS+'<hr>'+AND:AND+'<hr>'+IOS));};
 // Tabs
 function tab(t){var T=t==="tafel";$("tabNotes").hidden=T;$("tafelFrame").hidden=!T;if(T&&!$("tafelFrame").src)$("tafelFrame").src="finder/?v="+encodeURIComponent(APPV);
  $("tbN").classList.toggle("act",!T);$("tbT").classList.toggle("act",T);localStorage.setItem("arbeit_tab",t);}

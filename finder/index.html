@@ -25,6 +25,7 @@ canvas{width:100%;height:auto;border-radius:10px;margin-top:8px;touch-action:pin
 .modes label{display:block;padding:10px;border:2px solid #e0d7ea;border-radius:12px;margin-top:8px;cursor:pointer}.modes input{transform:scale(1.4);margin-right:6px}.modes label:has(input:checked){border-color:#6a1b9a;background:#f6effb}
 .r{color:#ef6c00;font-weight:700}.q{color:#8d6e63;font-weight:700}
 .imp{margin-top:12px;border:2px dashed #c9b6dc;border-radius:12px;padding:10px}.imp summary{cursor:pointer;font-size:17px}.imp textarea{width:100%;font-size:15px;padding:10px;border:1px solid #ccd;border-radius:10px;margin-top:8px;font-family:monospace}.imp input[type=checkbox]{width:24px;height:24px}.small2{min-height:40px;font-size:15px}
+.snap{margin-top:8px;border:2px solid #c9b6dc;border-radius:12px;padding:10px;background:#faf7fd}.snap .it{border-bottom:1px solid #e6dcef;padding:8px 0}.snap .it b{font-size:17px}.snap button{min-height:42px;font-size:15px;margin:4px 4px 0 0}.snap input{font-size:16px;padding:8px;border:1px solid #ccd;border-radius:8px}
 </style>
 </head>
 <body>
@@ -78,6 +79,8 @@ canvas{width:100%;height:auto;border-radius:10px;margin-top:8px;touch-action:pin
 <label class="file">🖼 Galerie<input type="file" id="fbg" accept="image/*" multiple></label></div>
 <div class="thumbs" id="tb"></div>
 <div class="row"><button class="primary" id="bb">Karten markieren</button></div>
+<div class="row"><button id="snapSave" type="button">💾 Tafel speichern</button><button id="snapOpen" type="button">📂 Gespeicherte Tafel laden</button></div>
+<div id="snapPanel" class="snap" hidden></div>
 <div class="prog" id="pb"></div>
 <div id="rsec" hidden><h2 style="margin-top:10px;color:#ef6c00">Aufräumen – Ergebnis</h2><div id="rsum" class="prog"></div>
 <table><thead><tr><th>#</th><th>Wkz</th><th>FAUF</th><th>Ort</th></tr></thead><tbody id="rlist"></tbody></table></div>
@@ -170,9 +173,9 @@ $("bx").onclick=async function(){if(!exFiles.length){alert("Bitte zuerst Excel-F
  results=null;save();render();};
 function drawBoard(c,im,matches,clean){var W=im.width,H=im.height;c.width=W;c.height=H;var x=c.getContext("2d");x.drawImage(im,0,0);
  var lw=Math.max(8,W/120);x.strokeStyle="#8e24aa";x.fillStyle="#8e24aa";x.font="bold "+Math.round(W/35)+"px sans-serif";
- matches.forEach(function(m,i){m.cards.forEach(function(cd){var r=Math.max(cd.r,W/14);x.lineWidth=m.status==="sicher"?lw:lw*0.6;x.setLineDash(m.status==="sicher"?[]:[lw*2,lw*1.5]);
+ matches.forEach(function(m,i){m.cards.forEach(function(cd){if(cd.x==null)return;var r=Math.max(cd.r,W/14);x.lineWidth=m.status==="sicher"?lw:lw*0.6;x.setLineDash(m.status==="sicher"?[]:[lw*2,lw*1.5]);
   x.beginPath();x.ellipse(cd.x,cd.y,r,r*0.85,0,0,Math.PI*2);x.stroke();x.setLineDash([]);x.fillText((i+1)+(m.status==="sicher"?"":"?"),cd.x-r,cd.y-r*0.85);});});
- x.strokeStyle="#ff7a00";x.fillStyle="#ff7a00";(clean||[]).forEach(function(m){if(m.status==="plan"){if(mode!=="fertig"){x.save();x.lineWidth=Math.max(2,lw/4);x.strokeStyle="rgba(120,120,120,.6)";x.beginPath();var cd0=m.card,r0=Math.max(cd0.r,W/14)*0.8;x.ellipse(cd0.x,cd0.y,r0,r0*0.85,0,0,Math.PI*2);x.stroke();x.restore();}return;}
+ x.strokeStyle="#ff7a00";x.fillStyle="#ff7a00";(clean||[]).forEach(function(m){if(m.card.x==null)return;if(m.status==="plan"){if(mode!=="fertig"){x.save();x.lineWidth=Math.max(2,lw/4);x.strokeStyle="rgba(120,120,120,.6)";x.beginPath();var cd0=m.card,r0=Math.max(cd0.r,W/14)*0.8;x.ellipse(cd0.x,cd0.y,r0,r0*0.85,0,0,Math.PI*2);x.stroke();x.restore();}return;}
   var cd=m.card,r=Math.max(cd.r,W/14);x.lineWidth=m.status==="raus"?lw:lw*0.6;x.setLineDash(m.status==="raus"?[]:[lw*2,lw*1.5]);x.beginPath();x.ellipse(cd.x,cd.y,r,r*0.85,0,0,Math.PI*2);x.stroke();x.setLineDash([]);
   x.lineWidth=4;x.strokeStyle="#fff";var lab=m.n+(m.status==="raus"?"":"?");x.strokeText(lab,cd.x+r*0.4,cd.y-r*0.85);x.fillText(lab,cd.x+r*0.4,cd.y-r*0.85);x.strokeStyle="#ff7a00";});}
 $("bb").onclick=async function(){if(!bdFiles.length){alert("Bitte zuerst Tafel-Foto(s) hinzufügen.");return;}if(mode!=="raus"&&!items.length){alert("Liste der grünen Aufträge ist leer.");return;}if(mode!=="fertig"&&!plan.length){alert("Plan ist leer – bitte zuerst Excel-Fotos auswerten.");return;}
@@ -183,9 +186,9 @@ $("bb").onclick=async function(){if(!bdFiles.length){alert("Bitte zuerst Tafel-F
    var tw=Math.min(2600,Math.round((x1-x0)*1.5)),sc=tw/(x1-x0),cv=canvasOf(im,tw,true,[x0,y0,x1-x0,y1-y0]);
    var ws=await ocr(cv,function(p){$("pb").textContent="Tafel-Foto "+(bi+1)+"/"+bdFiles.length+": Teil "+n+"/6 – "+p+" %";});cv.width=0;
    ws.forEach(function(w){all.push({t:w.t,b:{x0:w.b.x0/sc+x0,x1:w.b.x1/sc+x0,y0:w.b.y0/sc+y0,y1:w.b.y1/sc+y0}});});}
-  var cards=cached||TafelCore.gridPos(TafelCore.findCards(all));if(!cached)kvSet("cards_"+bdFiles[bi]._id+"_"+W,cards).catch(function(){});
+  var cards=cached||TafelCore.gridPos(TafelCore.findCards(all));if(!cached)kvSet("cards_"+bdFiles[bi]._id+"_"+W,cards).catch(function(){});kvSet("cardsP_"+bdFiles[bi]._id,{W:W,cards:cards}).catch(function(){});
   var res=mode==="raus"?[]:TafelCore.match(items,cards),clean=mode==="fertig"?[]:TafelCore.cleanup(plan,cards);
-  clean.filter(function(m){return m.status!=="plan";}).sort(function(a,b){return (a.status==="raus"?0:1)-(b.status==="raus"?0:1)||a.card.row-b.card.row||a.card.col-b.card.col;}).forEach(function(m){m.n=++rn;rall.push({n:m.n,status:m.status,why:m.why,wkz:m.card.wkz,fauf:m.card.fauf,foto:bi+1,row:m.card.row,col:m.card.col});});
+  clean.filter(function(m){return m.status!=="plan";}).sort(function(a,b){return (a.status==="raus"?0:1)-(b.status==="raus"?0:1)||a.card.row-b.card.row||a.card.col-b.card.col;}).forEach(function(m){m.n=++rn;rall.push({n:m.n,status:m.status,why:m.why+(m.card.manual?' (manuell eingetragen)':''),wkz:m.card.wkz,fauf:m.card.fauf,foto:bi+1,row:m.card.row||'–',col:m.card.col||'–'});});
   res.forEach(function(m,i){if(m.status==="sicher"||(m.status==="kandidat"&&comb[i].status!=="sicher")){if(m.status==="sicher"&&comb[i].status!=="sicher")comb[i].where=[];comb[i].status=m.status;comb[i].where.push(bi+1);}});
   var box=document.createElement("div"),h=document.createElement("h2"),s1=res.filter(function(m){return m.status==="sicher";}).length,k1=res.filter(function(m){return m.status==="kandidat";}).length;
   var r1=clean.filter(function(m){return m.status==="raus";}).length,q1=clean.filter(function(m){return m.status==="pruefen";}).length;h.textContent="Tafel-Foto "+(bi+1)+": "+cards.length+" Karten erkannt"+(mode!=="raus"?" · fertig: "+s1+" sicher, "+k1+" prüfen":"")+(mode!=="fertig"?" · rausnehmen: "+r1+", prüfen: "+q1:"");box.appendChild(h);
@@ -241,6 +244,37 @@ $("impApply").onclick=function(){if(!imp.length)return;var np=0,ni=0,nr=0;
  imp.forEach(function(r){var k=items.findIndex(function(i){return i.fauf===r.fauf;});if(r.done&&k<0){items.push({fauf:r.fauf,wkz:r.wkz,src:"imp"});ni++;}else if(!r.done&&k>=0&&items[k].src==="imp"){items.splice(k,1);nr++;}});
  results=null;save();render();$("impInfo").textContent="✅ Übernommen: Plan +"+np+" (gesamt "+plan.length+"), erledigt +"+ni+(nr?", "+nr+" Häkchen entfernt":"")+". Jetzt Tafel fotografieren → „Karten markieren“.";};
 Promise.all([kvGet("imported"),kvGet("impText")]).then(function(v){if(v[0]&&v[0].rows&&v[0].rows.length){imp=v[0].rows;imp._src=v[0].src;renderImp();}if(v[1])$("impText").value=v[1];}).catch(function(){});
+
+// ---- Tafel-Schnappschüsse ----
+function snapList(){return kvGet("snaps").then(function(l){return l||[];});}
+function fmtD(ts){return new Date(ts).toLocaleString("de-DE",{day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit"}).replace(",","");}
+async function makeSnap(name){var cardsL=[];for(var i=0;i<bdFiles.length;i++){var c=await kvGet("cardsP_"+bdFiles[i]._id).catch(function(){return null;});cardsL.push(c||null);}
+ var id="s"+Date.now(),ts=Date.now();await kvSet("snap_"+id,{photos:bdFiles.slice(),cards:cardsL});var l=await snapList();l.unshift({id:id,name:name||("Tafel "+fmtD(ts)),ts:ts,n:bdFiles.length,read:cardsL.filter(Boolean).length});await kvSet("snaps",l);return l[0];}
+$("snapSave").onclick=async function(){if(!bdFiles.length){alert("Keine Tafel-Fotos vorhanden.");return;}
+ var miss=0;for(var i=0;i<bdFiles.length;i++){if(!(await kvGet("cardsP_"+bdFiles[i]._id).catch(function(){return null;})))miss++;}
+ var def="Tafel "+fmtD(Date.now()),name=prompt((miss?"Hinweis: "+miss+" Foto(s) noch nicht gelesen – vorher „Karten markieren“ tippen, damit die Kartenliste mitgespeichert wird.\n\n":"")+"Name für diese Tafel:",def);if(name===null)return;
+ var m=await makeSnap(name.trim()||def);$("pb").textContent="💾 Gespeichert: „"+m.name+"“ ("+m.n+" Foto(s), "+m.read+" mit Kartenliste).";if(!$("snapPanel").hidden)showSnaps();};
+$("snapOpen").onclick=function(){var p=$("snapPanel");if(!p.hidden){p.hidden=true;return;}showSnaps();};
+async function showSnaps(){var p=$("snapPanel"),l=await snapList();p.hidden=false;
+ if(!l.length){p.innerHTML='<div class="small">Noch keine gespeicherte Tafel. Erst Tafel fotografieren, „Karten markieren“, dann „💾 Tafel speichern“.</div>';return;}
+ p.innerHTML='<h2 style="margin:0 0 6px">Gespeicherte Tafeln</h2>'+l.map(function(m){return '<div class="it" data-id="'+m.id+'"><b>'+esc(m.name)+'</b><div class="small">'+fmtD(m.ts)+' · '+m.n+' Foto(s)</div>'+
+  '<button data-a="load" class="primary">📂 Laden</button><button data-a="edit">✏️ Karten bearbeiten</button><button data-a="ren">🏷 Umbenennen</button><button data-a="del" class="del">🗑 Löschen</button><div class="ed"></div></div>';}).join("")+'<button id="snapClose" type="button">Schließen</button>';
+ $("snapClose").onclick=function(){p.hidden=true;};}
+$("snapPanel").onclick=async function(e){var b=e.target.closest("button");if(!b||!b.dataset.a)return;var it=b.closest(".it"),id=it.dataset.id,l=await snapList(),m=l.find(function(x){return x.id===id;});if(!m)return;var a=b.dataset.a;
+ if(a==="ren"){var n=prompt("Neuer Name:",m.name);if(n&&n.trim()){m.name=n.trim();await kvSet("snaps",l);showSnaps();}return;}
+ if(a==="del"){if(!confirm("Gespeicherte Tafel „"+m.name+"“ wirklich löschen?"))return;await kvSet("snaps",l.filter(function(x){return x!==m;}));await tx("kv","readwrite",function(s){s.delete("snap_"+id);});showSnaps();return;}
+ var d=await kvGet("snap_"+id);if(!d){alert("Daten nicht gefunden.");return;}
+ if(a==="load"){if(bdFiles.length&&!confirm("Aktuelle Tafel-Fotos durch „"+m.name+"“ ersetzen?\n(Die aktuellen werden vorher automatisch als Tafel gespeichert.)"))return;
+  if(bdFiles.length)await makeSnap("Automatisch gesichert "+fmtD(Date.now()));
+  bdFiles.length=0;await tx("photos","readwrite",function(s){var q=s.getAll();q.onsuccess=function(){q.result.forEach(function(r){if(r.kind==="bd")s.delete(r.id);});};});
+  for(var i=0;i<d.photos.length;i++){var f=d.photos[i];f._id=null;await savePhoto("bd",f);bdFiles.push(f);var c=d.cards[i];if(c){await kvSet("cards_"+f._id+"_"+c.W,c.cards);await kvSet("cardsP_"+f._id,c);}}
+  thumbs(bdFiles,$("tb"));$("snapPanel").hidden=true;$("pb").textContent="📂 „"+m.name+"“ geladen ("+d.photos.length+" Foto(s)). Jetzt „Karten markieren“ tippen – es wird nicht neu gelesen.";$("bb").scrollIntoView({behavior:"smooth",block:"center"});return;}
+ if(a==="edit"){var ed=it.querySelector(".ed");var draw=function(){var h="";d.cards.forEach(function(c,pi){if(!c)return;h+='<div class="small" style="margin-top:6px"><b>Foto '+(pi+1)+'</b> – '+c.cards.length+' Karten</div>'+c.cards.map(function(k,ki){return '<div>'+esc(k.wkz||"?")+' / '+esc(k.fauf||"–")+(k.manual?' <i>(manuell)</i>':'')+' <button data-x="'+pi+':'+ki+'" class="del" style="min-height:30px">✕</button></div>';}).join("");});
+   h+='<div class="row"><input id="edW" placeholder="Wkz (z. B. 036511)"><input id="edF" inputmode="numeric" placeholder="FAUF"></div><button id="edAdd" type="button">➕ Karte hinzufügen</button><button id="edSave" type="button" class="primary">✔ Speichern</button>';ed.innerHTML=h||"Keine Kartenliste gespeichert.";
+   ed.onclick=async function(ev){var x=ev.target.dataset.x;if(x){var q=x.split(":");if(confirm("Karte aus der Liste entfernen?")){d.cards[+q[0]].cards.splice(+q[1],1);draw();}return;}
+    if(ev.target.id==="edAdd"){var w=$("edW").value.trim(),fa=$("edF").value.replace(/\D/g,"");if(!w&&!fa)return;var pi=d.cards.findIndex(Boolean);if(pi<0){if(!d.photos.length)return;d.cards[0]={W:0,cards:[]};pi=0;}
+     d.cards[pi].cards.push({wkz:TafelCore.normWkz(w),wkzRaw:w,fauf:fa,manual:true,x:null,y:null,r:0});draw();}
+    if(ev.target.id==="edSave"){await kvSet("snap_"+id,d);$("pb").textContent="✔ Kartenliste von „"+m.name+"“ gespeichert. Zum Benutzen „📂 Laden“ tippen.";ed.innerHTML="";}};};draw();}};
 
 $("shareAll").onclick=function(){var fs=[];exFiles.forEach(function(f,i){fs.push(asFile(f,"excel_"+(i+1)));});bdFiles.forEach(function(f,i){fs.push(asFile(f,"tafel_"+(i+1)));});
  markedOuts.forEach(function(o,i){fs.push(asFile(o.blob,"tafel_"+(i+1)+"_markiert"));});var t=listText();
