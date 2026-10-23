@@ -24,6 +24,7 @@ canvas{width:100%;height:auto;border-radius:10px;margin-top:8px;touch-action:pin
 .embedded header{padding:10px 16px}
 .modes label{display:block;padding:10px;border:2px solid #e0d7ea;border-radius:12px;margin-top:8px;cursor:pointer}.modes input{transform:scale(1.4);margin-right:6px}.modes label:has(input:checked){border-color:#6a1b9a;background:#f6effb}
 .r{color:#ef6c00;font-weight:700}.q{color:#8d6e63;font-weight:700}
+.imp{margin-top:12px;border:2px dashed #c9b6dc;border-radius:12px;padding:10px}.imp summary{cursor:pointer;font-size:17px}.imp textarea{width:100%;font-size:15px;padding:10px;border:1px solid #ccd;border-radius:10px;margin-top:8px;font-family:monospace}.imp input[type=checkbox]{width:24px;height:24px}.small2{min-height:40px;font-size:15px}
 </style>
 </head>
 <body>
@@ -43,6 +44,16 @@ canvas{width:100%;height:auto;border-radius:10px;margin-top:8px;touch-action:pin
 <label class="file">🖼 Galerie<input type="file" id="fxg" accept="image/*" multiple></label></div>
 <div class="thumbs" id="tx"></div>
 <div class="row"><button class="primary" id="bx">Grüne Zeilen suchen</button></div><div class="prog" id="px"></div>
+<details class="imp" id="impBox"><summary><b>📄 Excel importieren</b> <span class="small">(statt Foto – Datei oder Einfügen)</span></summary>
+<div class="row"><label class="file">📂 Datei wählen (.xlsx, .xls, .csv, .txt)<input type="file" id="impFile" accept=".xlsx,.xls,.xlsm,.csv,.txt,.tsv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,text/csv,text/plain"></label></div>
+<textarea id="impText" rows="5" placeholder="Aus Excel kopieren & einfügen: Zeilen in Excel markieren (FAUF, Wkz.Nr, AVO, Z, St., Bemerkung) → Kopieren → hier lange drücken → Einfügen"></textarea>
+<div class="row"><button id="impParse" type="button">📋 Eingefügten Text lesen</button></div>
+<div class="prog" id="impInfo"></div>
+<div id="impWrap" hidden><div class="row"><button id="impAll" type="button" class="small2">☑ Alle erledigt</button><button id="impNone" type="button" class="small2">☐ Keine</button></div>
+<div style="max-height:360px;overflow:auto;margin-top:6px"><table><thead><tr><th>Erl.</th><th>FAUF</th><th>Wkz</th><th>AVO</th><th>Bemerkung</th></tr></thead><tbody id="impRows"></tbody></table></div>
+<div class="row"><button class="primary" id="impApply" type="button">✅ In Plan + Liste übernehmen</button></div>
+<div class="small">Häkchen = erledigt (grün) → Variante 1 (violett). Alle Zeilen = Plan → Variante 2 (orange). Beim Einfügen gehen Farben verloren – bitte erledigte Zeilen selbst abhaken (Zeilen mit „Fertig“/„erledigt“ sind vorbelegt).</div></div>
+</details>
 </section>
 <section class="card" id="modeCard">
 <h2>Was soll gesucht werden?</h2>
@@ -77,7 +88,8 @@ canvas{width:100%;height:auto;border-radius:10px;margin-top:8px;touch-action:pin
 </section>
 </main>
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@7/dist/tesseract.min.js"></script>
-<script src="core.js?v=16"></script>
+<script src="core.js?v=18"></script>
+<script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js" defer></script>
 <script>if(window.self!==window.top){document.documentElement.classList.add("embedded");}else{try{if(localStorage.getItem("tf_help_seen")){document.getElementById("help").open=false;}localStorage.setItem("tf_help_seen","1");}catch(e){}}</script>
 <script>
 (function(){
@@ -193,15 +205,43 @@ renderPlan();
 function showBoards(outs){$("boards").innerHTML="";(outs||[]).forEach(function(o,i){var box=document.createElement("div"),h=document.createElement("h2");h.textContent=o.title+" (gespeichert)";
  var im=document.createElement("img");im.src=URL.createObjectURL(o.blob);im.style.width="100%";im.style.borderRadius="10px";var a=document.createElement("a");a.href=im.src;a.download="tafel_"+(i+1)+"_markiert.jpg";a.textContent="⬇ Bild "+(i+1)+" speichern";a.className="file";
  box.appendChild(h);box.appendChild(im);box.appendChild(a);box.appendChild(shareBtn(o.blob,"tafel_"+(i+1)+"_markiert","Bild "+(i+1)));$("boards").appendChild(box);});markedOuts=(outs||[]).slice();}
-DBP.then(function(){return tx("photos","readonly",function(s){return s.getAll();});}).then(function(all){(all||[]).sort(function(a,b){return a.ts-b.ts;}).forEach(function(r){var b=r.blob;b._id=r.id;(r.kind==="ex"?exFiles:bdFiles).push(b);});
+DBP.then(function(){return tx("photos","readonly",function(s){return s.getAll();});}).then(function(all){(all||[]).sort(function(a,b){return a.ts-b.ts;}).forEach(function(r){var b=r.blob;b._id=r.id;if(r.kind==="imp")return;(r.kind==="ex"?exFiles:bdFiles).push(b);});
  thumbs(exFiles,$("tx"));thumbs(bdFiles,$("tb"));return Promise.all([kvGet("items"),kvGet("results"),kvGet("boards"),kvGet("pb"),kvGet("plan"),kvGet("raus")]);})
  .then(function(v){if((!items||!items.length)&&v[0]&&v[0].length){items=v[0];localStorage.setItem(KEY,JSON.stringify(items));}
   if(v[1]&&v[1].length===items.length)results=v[1];if((!plan||!plan.length)&&v[4]&&v[4].length){plan=v[4];localStorage.setItem(PKEY,JSON.stringify(plan));renderPlan();}if(v[5])showRaus(v[5]);showBoards(v[2]);if(v[3])$("pb").textContent=v[3];render();})
  .catch(function(e){$("pb").textContent="Speicher nicht verfügbar: "+e.message;});
 if(navigator.storage&&navigator.storage.persist)navigator.storage.persist();
 $("allclr").onclick=function(){if(!confirm("Wirklich ALLES löschen? Alle Fotos, die Liste und die Ergebnisse gehen verloren."))return;
- Promise.all([tx("photos","readwrite",function(s){s.clear();}),tx("kv","readwrite",function(s){s.clear();})]).then(function(){exFiles.length=0;bdFiles.length=0;items=[];results=null;plan=[];localStorage.removeItem(KEY);localStorage.removeItem(PKEY);renderPlan();showRaus([]);
+ Promise.all([tx("photos","readwrite",function(s){s.clear();}),tx("kv","readwrite",function(s){s.clear();})]).then(function(){exFiles.length=0;bdFiles.length=0;items=[];results=null;plan=[];imp=[];renderImp();$("impText").value="";$("impInfo").textContent="";localStorage.removeItem(KEY);localStorage.removeItem(PKEY);renderPlan();showRaus([]);
  thumbs(exFiles,$("tx"));thumbs(bdFiles,$("tb"));$("boards").innerHTML="";$("pb").textContent="";$("px").textContent="";render();});};
+// ---- Excel-Import (Datei / Einfügen) ----
+var imp=[];
+function renderImp(){var w=$("impWrap");w.hidden=!imp.length;$("impRows").innerHTML=imp.map(function(r,i){return '<tr><td><input type="checkbox" data-i="'+i+'"'+(r.done?' checked':'')+'></td><td>'+esc(r.fauf)+'</td><td>'+esc(r.wkz)+'</td><td>'+esc(r.avo)+'</td><td>'+esc(r.bem)+(r.green?' <span title="grün in Excel">🟩</span>':'')+'</td></tr>';}).join("");
+ var d=imp.filter(function(r){return r.done;}).length;if(imp.length)$("impInfo").textContent="📄 "+imp.length+" Zeilen gelesen, davon "+d+" als erledigt markiert"+(imp._src?" ("+imp._src+")":"")+".";}
+$("impRows").onchange=function(e){var i=e.target.dataset.i;if(i==null)return;imp[+i].done=e.target.checked;kvSet("imported",{rows:imp,src:imp._src||""});renderImp();};
+$("impAll").onclick=function(){imp.forEach(function(r){r.done=true;});kvSet("imported",{rows:imp,src:imp._src||""});renderImp();};
+$("impNone").onclick=function(){imp.forEach(function(r){r.done=false;});kvSet("imported",{rows:imp,src:imp._src||""});renderImp();};
+function setImp(res,src){if(!res.rows.length){$("impInfo").textContent="⚠️ Keine FAUF-Nummern (7-stellig) gefunden. Bitte Spalten FAUF und Wkz.Nr mitkopieren.";return;}
+ imp=res.rows;imp._src=src+(res.hasColor?", Farben gelesen":", keine Farben – bitte abhaken");kvSet("imported",{rows:imp,src:imp._src});renderImp();}
+function themeGreen(t){return t===9;}
+function readXlsx(buf,name){if(typeof XLSX==="undefined"){$("impInfo").textContent="Excel-Leser nicht geladen (Internet?). Alternativ: In Excel kopieren und unten einfügen.";return;}
+ var wb=XLSX.read(buf,{type:"array",cellStyles:true}),best=null;
+ wb.SheetNames.forEach(function(n){var ws=wb.Sheets[n];if(!ws["!ref"])return;var rg=XLSX.utils.decode_range(ws["!ref"]);var grid=XLSX.utils.sheet_to_json(ws,{header:1,raw:false,defval:"",blankrows:true});
+  var res=TafelCore.parseTable(grid,function(r,c){var cell=ws[XLSX.utils.encode_cell({r:r+rg.s.r,c:c+rg.s.c})];if(!cell||!cell.s)return undefined;var f=cell.s.fgColor||{};
+   if(cell.s.patternType&&cell.s.patternType!=="none"){if((f.rgb&&TafelCore.isGreenHex(f.rgb))||themeGreen(f.theme))return "green";return null;}return null;});
+  if(!best||res.rows.length>best.res.rows.length)best={res:res,n:n};});
+ if(best)setImp(best.res,name+" / Blatt „"+best.n+"“");else setImp({rows:[]},name);}
+$("impFile").onchange=function(){var f=this.files[0];if(!f)return;this.value="";$("impInfo").textContent="⏳ "+f.name+" wird gelesen …";
+ savePhoto("imp",f).catch(function(){});
+ var rd=new FileReader();if(/\.(csv|txt|tsv)$/i.test(f.name)||/^text\//.test(f.type)){rd.onload=function(){setImp(TafelCore.parseText(rd.result),f.name);};rd.readAsText(f);}
+ else{rd.onload=function(){try{readXlsx(new Uint8Array(rd.result),f.name);}catch(e){$("impInfo").textContent="Fehler beim Lesen: "+e.message;}};rd.readAsArrayBuffer(f);}};
+$("impParse").onclick=function(){var t=$("impText").value;if(!t.trim()){alert("Bitte zuerst Zeilen aus Excel einfügen.");return;}kvSet("impText",t);setImp(TafelCore.parseText(t),"eingefügt");};
+$("impApply").onclick=function(){if(!imp.length)return;var np=0,ni=0,nr=0;
+ imp.forEach(function(r){if(!plan.some(function(p){return p.fauf===r.fauf;})){plan.push({fauf:r.fauf,wkz:r.wkz});np++;}});savePlan();
+ imp.forEach(function(r){var k=items.findIndex(function(i){return i.fauf===r.fauf;});if(r.done&&k<0){items.push({fauf:r.fauf,wkz:r.wkz,src:"imp"});ni++;}else if(!r.done&&k>=0&&items[k].src==="imp"){items.splice(k,1);nr++;}});
+ results=null;save();render();$("impInfo").textContent="✅ Übernommen: Plan +"+np+" (gesamt "+plan.length+"), erledigt +"+ni+(nr?", "+nr+" Häkchen entfernt":"")+". Jetzt Tafel fotografieren → „Karten markieren“.";};
+Promise.all([kvGet("imported"),kvGet("impText")]).then(function(v){if(v[0]&&v[0].rows&&v[0].rows.length){imp=v[0].rows;imp._src=v[0].src;renderImp();}if(v[1])$("impText").value=v[1];}).catch(function(){});
+
 $("shareAll").onclick=function(){var fs=[];exFiles.forEach(function(f,i){fs.push(asFile(f,"excel_"+(i+1)));});bdFiles.forEach(function(f,i){fs.push(asFile(f,"tafel_"+(i+1)));});
  markedOuts.forEach(function(o,i){fs.push(asFile(o.blob,"tafel_"+(i+1)+"_markiert"));});var t=listText();
  if(!fs.length&&!items.length&&!(window.__raus||[]).length){alert("Noch nichts zum Teilen.");return;}

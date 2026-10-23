@@ -1,0 +1,33 @@
+{
+ "name": "Arbeitsapp",
+ "short_name": "Arbeitsapp",
+ "description": "Notizen diktieren und Tafel-Finder",
+ "id": "/notiz-app/",
+ "start_url": "/notiz-app/",
+ "scope": "/notiz-app/",
+ "display": "standalone",
+ "orientation": "portrait",
+ "background_color": "#f2f4f7",
+ "theme_color": "#1565c0",
+ "lang": "de",
+ "icons": [
+  {
+   "src": "icon-192.png",
+   "sizes": "192x192",
+   "type": "image/png",
+   "purpose": "any"
+  },
+  {
+   "src": "icon-512.png",
+   "sizes": "512x512",
+   "type": "image/png",
+   "purpose": "any"
+  },
+  {
+   "src": "icon-maskable-512.png",
+   "sizes": "512x512",
+   "type": "image/png",
+   "purpose": "maskable"
+  }
+ ]
+}
