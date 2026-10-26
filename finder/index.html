@@ -8,7 +8,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <title>Tafel-Finder</title>
 <script>(function(){var m=location.hash.match(/(?:^#|&)k=([A-Za-z0-9_\-]+)/);if(m){try{localStorage.setItem("tf_plan_key",m[1]);localStorage.removeItem("tf_bot_stand");localStorage.setItem("arbeit_tab","tafel");}catch(e){}history.replaceState(null,"",location.pathname+location.search);}})();</script>
-<meta name="app-version" content="2.2 (26.10.2026)">
+<meta name="app-version" content="2.3 (26.10.2026)">
 <meta name="description" content="Excel-Plan und Tafel fotografieren – erledigte Aufträge (Gutmenge = VorgMenge) werden violett markiert">
 <meta name="apple-mobile-web-app-title" content="Tafel-Finder">
 <style>
@@ -29,9 +29,23 @@ canvas{width:100%;height:auto;border-radius:10px;margin-top:8px;touch-action:pin
 .imp{margin-top:12px;border:2px dashed #c9b6dc;border-radius:12px;padding:10px}.imp summary{cursor:pointer;font-size:17px}.imp textarea{width:100%;font-size:15px;padding:10px;border:1px solid #ccd;border-radius:10px;margin-top:8px;font-family:monospace}.imp input[type=checkbox]{width:24px;height:24px}.small2{min-height:40px;font-size:15px}
 .snap{margin-top:8px;border:2px solid #c9b6dc;border-radius:12px;padding:10px;background:#faf7fd}.snap .it{border-bottom:1px solid #e6dcef;padding:8px 0}.snap .it b{font-size:17px}.snap button{min-height:42px;font-size:15px;margin:4px 4px 0 0}.snap input{font-size:16px;padding:8px;border:1px solid #ccd;border-radius:8px}
 </style>
+<script>
+// ---- Selbst-Aktualisierung (v2.3): neue Version erkennen und einmal automatisch neu laden ----
+(function(){var APPV=(document.querySelector('meta[name="app-version"]')||{}).content||"";var top=window.self===window.top;
+ function reloadOnce(tag){try{var k="upd_reload_"+tag,t=+sessionStorage.getItem(k)||0;if(Date.now()-t<60000)return false;sessionStorage.setItem(k,Date.now());}catch(e){}
+  var u=new URL(location.href);u.searchParams.set("v",Date.now());location.replace(u.pathname+u.search+location.hash);return true;}
+ window.__reloadOnce=reloadOnce;
+ function check(){if(!top)return;if(navigator.serviceWorker&&navigator.serviceWorker.getRegistration)navigator.serviceWorker.getRegistration().then(function(r){if(r)r.update().catch(function(){});}).catch(function(){});
+  fetch(new URL("version.json",document.baseURI.replace(/finder\/[^/]*$/,"")).href+"?nocache="+Date.now(),{cache:"no-store"}).then(function(r){return r.ok?r.json():null;}).then(function(j){
+   if(j&&j.v&&j.v!==APPV){if(!reloadOnce(j.v)){var b=document.getElementById("upd");if(b)b.hidden=false;}}}).catch(function(){});}
+ if(top&&"serviceWorker" in navigator){var had=!!navigator.serviceWorker.controller,mine="arbeitsapp-v"+APPV.split(" ")[0];navigator.serviceWorker.addEventListener("controllerchange",function(){if(had)reloadOnce("sw");had=true;});
+  navigator.serviceWorker.addEventListener("message",function(e){if(e.data&&e.data.type==="sw-updated"&&e.data.v!==mine)reloadOnce("sw");});}
+ window.__checkUpd=check;document.addEventListener("visibilitychange",function(){if(!document.hidden)check();});window.addEventListener("pageshow",function(e){if(e.persisted)check();});
+ if(document.readyState==="complete")check();else window.addEventListener("load",check);})();
+</script>
 </head>
 <body>
-<header><h1>🔍 Tafel-Finder</h1></header>
+<header><h1>🔍 Tafel-Finder <small style="font-size:13px;opacity:.9;font-weight:600;background:#ffffff33;padding:2px 8px;border-radius:8px">Version 2.3</small></h1></header>
 <main>
 <details class="card" id="help" open><summary style="font-weight:700;font-size:18px;cursor:pointer">ℹ️ So geht’s</summary>
 <ol style="margin:8px 0 0;padding-left:22px;line-height:1.5">
@@ -41,7 +55,7 @@ canvas{width:100%;height:auto;border-radius:10px;margin-top:8px;touch-action:pin
 <li>Tafel fotografieren (gerade, scharf, ohne Spiegelung – gern in 2 Hälften) und „Karten markieren“ tippen.</li>
 <li>Gefundene Karten sind violett eingekreist: durchgezogen = sicher, gestrichelt mit „?“ = bitte prüfen.</li>
 </ol>
-<p class="small" style="margin:8px 0 0">Alle Fotos und Ergebnisse bleiben nur auf deinem Handy. Tipp: Über das Browser-Menü „Zum Startbildschirm hinzufügen“. · Version 2.2</p></details>
+<p class="small" style="margin:8px 0 0">Alle Fotos und Ergebnisse bleiben nur auf deinem Handy. Tipp: Über das Browser-Menü „Zum Startbildschirm hinzufügen“. · Version 2.3</p></details>
 <section class="card" id="botCard" style="border:2px solid #6a1b9a">
 <h2>🤖 Plan vom Bot <span id="pairOk" class="ok" hidden>· Gekoppelt ✓</span></h2>
 <div id="botInfo" class="prog" style="font-size:16px;color:#1a1a1a">⏳ Plan wird geladen …</div>
@@ -110,7 +124,7 @@ canvas{width:100%;height:auto;border-radius:10px;margin-top:8px;touch-action:pin
 </section>
 </main>
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@7/dist/tesseract.min.js"></script>
-<script src="core.js?v=21"></script>
+<script src="core.js?v=23"></script>
 <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js" defer></script>
 <script>if(window.self!==window.top){document.documentElement.classList.add("embedded");}else{try{if(localStorage.getItem("tf_help_seen")){document.getElementById("help").open=false;}localStorage.setItem("tf_help_seen","1");}catch(e){}}</script>
 <script>
