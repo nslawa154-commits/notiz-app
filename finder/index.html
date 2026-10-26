@@ -8,11 +8,11 @@
 <meta name="mobile-web-app-capable" content="yes">
 <title>Tafel-Finder</title>
 <script>(function(){var m=location.hash.match(/(?:^#|&)k=([A-Za-z0-9_\-]+)/);if(m){try{localStorage.setItem("tf_plan_key",m[1]);localStorage.removeItem("tf_bot_stand");localStorage.setItem("arbeit_tab","tafel");}catch(e){}history.replaceState(null,"",location.pathname+location.search);}})();</script>
-<meta name="app-version" content="2.3 (26.10.2026)">
+<meta name="app-version" content="2.4 (26.10.2026)">
 <meta name="description" content="Excel-Plan und Tafel fotografieren – erledigte Aufträge (Gutmenge = VorgMenge) werden violett markiert">
 <meta name="apple-mobile-web-app-title" content="Tafel-Finder">
 <style>
-*{box-sizing:border-box}body{margin:0;font-family:system-ui,sans-serif;background:#f3f0f7;color:#1a1a1a;font-size:17px}
+[hidden]{display:none!important}*{box-sizing:border-box}body{margin:0;font-family:system-ui,sans-serif;background:#f3f0f7;color:#1a1a1a;font-size:17px}
 header{background:#6a1b9a;color:#fff;padding:14px 16px;position:sticky;top:0;z-index:5}h1{margin:0;font-size:20px}
 main{max-width:820px;margin:auto;padding:12px}.card{background:#fff;border-radius:14px;padding:14px;margin-bottom:12px;box-shadow:0 1px 3px #0002}
 h2{font-size:18px;margin:0 0 8px}button,.file{font-size:17px;min-height:48px;padding:10px 16px;border:0;border-radius:10px;background:#ece4f3;cursor:pointer;display:inline-flex;align-items:center;justify-content:center}
@@ -45,7 +45,7 @@ canvas{width:100%;height:auto;border-radius:10px;margin-top:8px;touch-action:pin
 </script>
 </head>
 <body>
-<header><h1>🔍 Tafel-Finder <small style="font-size:13px;opacity:.9;font-weight:600;background:#ffffff33;padding:2px 8px;border-radius:8px">Version 2.3</small></h1></header>
+<header><h1>🔍 Tafel-Finder <small style="font-size:13px;opacity:.9;font-weight:600;background:#ffffff33;padding:2px 8px;border-radius:8px">Version 2.4</small></h1></header>
 <main>
 <details class="card" id="help" open><summary style="font-weight:700;font-size:18px;cursor:pointer">ℹ️ So geht’s</summary>
 <ol style="margin:8px 0 0;padding-left:22px;line-height:1.5">
@@ -55,7 +55,7 @@ canvas{width:100%;height:auto;border-radius:10px;margin-top:8px;touch-action:pin
 <li>Tafel fotografieren (gerade, scharf, ohne Spiegelung – gern in 2 Hälften) und „Karten markieren“ tippen.</li>
 <li>Gefundene Karten sind violett eingekreist: durchgezogen = sicher, gestrichelt mit „?“ = bitte prüfen.</li>
 </ol>
-<p class="small" style="margin:8px 0 0">Alle Fotos und Ergebnisse bleiben nur auf deinem Handy. Tipp: Über das Browser-Menü „Zum Startbildschirm hinzufügen“. · Version 2.3</p></details>
+<p class="small" style="margin:8px 0 0">Alle Fotos und Ergebnisse bleiben nur auf deinem Handy. Tipp: Über das Browser-Menü „Zum Startbildschirm hinzufügen“. · Version 2.4</p></details>
 <section class="card" id="botCard" style="border:2px solid #6a1b9a">
 <h2>🤖 Plan vom Bot <span id="pairOk" class="ok" hidden>· Gekoppelt ✓</span></h2>
 <div id="botInfo" class="prog" style="font-size:16px;color:#1a1a1a">⏳ Plan wird geladen …</div>
@@ -111,6 +111,10 @@ canvas{width:100%;height:auto;border-radius:10px;margin-top:8px;touch-action:pin
 <div class="row"><label class="file">📷 Kamera<input type="file" id="fbc" accept="image/*" capture="environment"></label>
 <label class="file">🖼 Galerie<input type="file" id="fbg" accept="image/*" multiple></label></div>
 <div class="thumbs" id="tb"></div>
+<div class="small" style="margin-top:4px">🗓 Hier: Fotos von heute. Fotos werden nach 3 Tagen automatisch gelöscht (gespeicherte Tafeln bleiben).</div>
+<details id="arch" class="imp" hidden><summary><b>🗂 Archiv (3 Tage)</b> <span class="small" id="archN"></span></summary><div id="archList"></div>
+<div class="small" style="margin-top:6px">Fotos von den letzten Tagen. „In Tafel übernehmen“ = wieder oben einfügen und markieren. Nach 3 Tagen werden sie automatisch gelöscht.</div></details>
+<div id="viewer" hidden style="position:fixed;inset:0;background:#000d;z-index:50;display:flex;align-items:center;justify-content:center" title="Schließen"><img id="viewImg" style="max-width:100%;max-height:100%"></div>
 <div class="row"><button class="primary" id="bb">Karten markieren</button></div>
 <div class="row"><button id="snapSave" type="button">💾 Tafel speichern</button><button id="snapOpen" type="button">📂 Gespeicherte Tafel laden</button></div>
 <div id="snapPanel" class="snap" hidden></div>
@@ -161,7 +165,8 @@ var DBP=new Promise(function(res,rej){var r=indexedDB.open("tafelfinder",1);r.on
 function tx(store,mode,fn){return DBP.then(function(d){return new Promise(function(res,rej){var t=d.transaction(store,mode),st=t.objectStore(store),out=fn(st);t.oncomplete=function(){res(out&&out.result);};t.onerror=function(){rej(t.error);};});});}
 function kvSet(k,v){return tx("kv","readwrite",function(s){s.put(v,k);});}
 function kvGet(k){return tx("kv","readonly",function(s){return s.get(k);});}
-function savePhoto(kind,f){f._id=f._id||(Date.now()+"_"+Math.random().toString(36).slice(2,7));return tx("photos","readwrite",function(s){s.put({id:f._id,kind:kind,ts:Date.now(),blob:f});});}
+function savePhoto(kind,f){f._id=f._id||(Date.now()+"_"+Math.random().toString(36).slice(2,7));f._ts=f._ts||Date.now();return tx("photos","readwrite",function(s){s.put({id:f._id,kind:kind,ts:f._ts,blob:f});});}
+function delCards(id){if(!id)return Promise.resolve();return tx("kv","readwrite",function(s){var q=s.getAllKeys();q.onsuccess=function(){q.result.forEach(function(k){if(typeof k==="string"&&(k==="cardsP_"+id||k.indexOf("cards_"+id+"_")===0))s.delete(k);});};}).catch(function(){});}
 function delPhoto(id){return tx("photos","readwrite",function(s){s.delete(id);});}
 function persistItems(){kvSet("items",items).catch(function(){});}
 
@@ -182,10 +187,22 @@ async function shareFiles(files,text,title){var ps=$("ps");
  if(text){try{await navigator.clipboard.writeText(text);msg+="Liste wurde in die Zwischenablage kopiert – im Chat einfügen.";}catch(e){var ta=document.createElement("textarea");ta.value=text;document.body.appendChild(ta);ta.select();try{document.execCommand("copy");msg+="Liste kopiert.";}catch(e3){msg+="Liste: siehe unten.";}ta.remove();}}
  if(ps)ps.textContent="ℹ️ Teilen mit Dateien wird hier nicht unterstützt. "+msg;else alert(msg);}
 function shareBtn(blob,name,label){var b=document.createElement("button");b.type="button";b.textContent="📤 "+label+" teilen";b.onclick=function(){shareFiles([asFile(blob,name)],"",label);};return b;}
-var exFiles=[],bdFiles=[];
-function thumbs(arr,el){el.innerHTML="";arr.forEach(function(f,i){var d=document.createElement("div");d.className="th";var im=document.createElement("img");
- if(!f._u)f._u=URL.createObjectURL(f);im.src=f._u;var b=document.createElement("button");b.textContent="✕";b.title="Entfernen";
- b.onclick=function(){if(!confirm("Dieses Foto wirklich entfernen?"))return;URL.revokeObjectURL(f._u);arr.splice(i,1);delPhoto(f._id);thumbs(arr,el);};var sb=document.createElement("button");sb.className="sh";sb.textContent="📤";sb.title="Teilen";sb.onclick=function(){shareFiles([asFile(f,(arr===exFiles?"excel_":"tafel_")+(i+1))],"","Foto "+(i+1));};var n=document.createElement("span");n.textContent=i+1;d.appendChild(im);d.appendChild(sb);d.appendChild(n);d.appendChild(b);el.appendChild(d);});}
+var exFiles=[],bdFiles=[],bdArchive=[],boardsFrom=null,KEEP_MS=3*864e5;
+function nowMs(){var t=+localStorage.getItem("tf_fake_now");return t||Date.now();}
+function dayKey(ts){var d=new Date(ts);return d.getFullYear()+"-"+(d.getMonth()+1)+"-"+d.getDate();}
+function dayLabel(ts){var d=new Date(ts),y=new Date(nowMs()-864e5);return (dayKey(ts)===dayKey(y.getTime())?"Gestern, ":"")+d.toLocaleDateString("de-DE",{weekday:"long",day:"2-digit",month:"2-digit",year:"numeric"});}
+$("viewer").onclick=function(){$("viewer").hidden=true;$("viewImg").src="";};
+function renderArchive(){var el=$("archList");el.innerHTML="";var g={},order=[];bdArchive.forEach(function(f){var k=dayKey(f._ts);if(!g[k]){g[k]=[];order.push(k);}g[k].push(f);});
+ order.sort(function(a,b){return g[b][0]._ts-g[a][0]._ts;});$("arch").hidden=!bdArchive.length;$("archN").textContent=bdArchive.length?"– "+bdArchive.length+" Foto(s)":"";
+ order.forEach(function(k){var arr=g[k],box=document.createElement("div");box.style.marginTop="10px";var left=Math.max(0,Math.ceil((arr[0]._ts+KEEP_MS-nowMs())/864e5));
+  var h=document.createElement("div");h.innerHTML="<b>"+esc(dayLabel(arr[0]._ts))+"</b> <span class=small>("+arr.length+" Foto(s), wird in "+left+" Tag(en) gelöscht)</span>";box.appendChild(h);
+  var t=document.createElement("div");t.className="thumbs";box.appendChild(t);thumbs(arr,t,function(f){bdArchive=bdArchive.filter(function(x){return x!==f;});renderArchive();});
+  var b=document.createElement("button");b.type="button";b.className="small2";b.textContent="↩ In Tafel übernehmen (zum Markieren)";b.onclick=function(){arr.forEach(function(f){if(bdFiles.indexOf(f)<0)bdFiles.push(f);});
+   bdArchive=bdArchive.filter(function(x){return arr.indexOf(x)<0;});thumbs(bdFiles,$("tb"));renderArchive();$("pb").textContent="↩ "+arr.length+" Foto(s) übernommen. Jetzt „Karten markieren“ tippen.";$("bb").scrollIntoView({behavior:"smooth",block:"center"});};
+  var r=document.createElement("div");r.className="row";r.appendChild(b);box.appendChild(r);el.appendChild(box);});}
+function thumbs(arr,el,onDel){el.innerHTML="";arr.forEach(function(f,i){var d=document.createElement("div");d.className="th";var im=document.createElement("img");
+ if(!f._u)f._u=URL.createObjectURL(f);im.src=f._u;im.onclick=function(){$("viewImg").src=f._u;$("viewer").hidden=false;};var b=document.createElement("button");b.textContent="✕";b.title="Entfernen";
+ b.onclick=function(){if(!confirm("Dieses Foto wirklich entfernen?"))return;URL.revokeObjectURL(f._u);arr.splice(i,1);delPhoto(f._id);delCards(f._id);if(onDel)onDel(f);thumbs(arr,el,onDel);};var sb=document.createElement("button");sb.className="sh";sb.textContent="📤";sb.title="Teilen";sb.onclick=function(){shareFiles([asFile(f,(arr===exFiles?"excel_":"tafel_")+(i+1))],"","Foto "+(i+1));};var n=document.createElement("span");n.textContent=i+1;d.appendChild(im);d.appendChild(sb);d.appendChild(n);d.appendChild(b);el.appendChild(d);});}
 function adder(inp,arr,el){$(inp).onchange=function(){var kind=arr===exFiles?"ex":"bd";Array.from(this.files).forEach(function(f){arr.push(f);savePhoto(kind,f).catch(function(e){alert("Foto konnte nicht gespeichert werden: "+e.message);});});this.value="";thumbs(arr,el);};}
 adder("fxc",exFiles,$("tx"));adder("fxg",exFiles,$("tx"));adder("fbc",bdFiles,$("tb"));adder("fbg",bdFiles,$("tb"));
 // Bild laden + verkleinern (spart Speicher)
@@ -256,7 +273,7 @@ $("bb").onclick=async function(){if(!bdFiles.length){alert("Bitte zuerst Tafel-F
   var out=document.createElement("canvas");drawBoard(out,im,res,clean);box.appendChild(out);
   var dl=document.createElement("button");dl.textContent="⬇ Bild "+(bi+1)+" speichern";(function(o,i){dl.onclick=function(){o.toBlob(function(b){var a=document.createElement("a");a.href=URL.createObjectURL(b);a.download="tafel_"+i+"_markiert.jpg";a.click();},"image/jpeg",0.85);};})(out,bi+1);
   box.appendChild(dl);$("boards").appendChild(box);var ob=await new Promise(function(r){out.toBlob(function(b){r({title:h.textContent,blob:b});},"image/jpeg",0.92);});outs.push(ob);markedOuts.push(ob);box.appendChild(shareBtn(ob.blob,"tafel_"+(bi+1)+"_markiert","Bild "+(bi+1)));im.width=0;await tick();}
-  results=mode==="raus"?results:comb;render();showRaus(rall);kvSet("raus",rall);kvSet("boards",outs);kvSet("results",results);var s=comb.filter(function(m){return m.status==="sicher";}).length,k=comb.filter(function(m){return m.status==="kandidat";}).length;
+  results=mode==="raus"?results:comb;render();showRaus(rall);kvSet("raus",rall);kvSet("boards",outs);kvSet("boardsTs",Date.now());kvSet("results",results);var s=comb.filter(function(m){return m.status==="sicher";}).length,k=comb.filter(function(m){return m.status==="kandidat";}).length;
   var rr=rall.filter(function(x){return x.status==="raus";}).length,rq=rall.length-rr;$("pb").textContent="✅ Gesamt ("+bdFiles.length+" Foto(s))"+(mode!=="raus"?" · Fertige: "+s+" sicher, "+k+" prüfen, "+(items.length-s-k)+" nicht gefunden":"")+(mode!=="fertig"?" · Rausnehmen: "+rr+" · Prüfen: "+rq:"")+". Nicht gelesene Karten werden nicht markiert – bitte Tafel trotzdem kurz ansehen.";kvSet("pb",$("pb").textContent);}
  catch(e){$("pb").textContent="Fehler: "+e.message;}};
 
@@ -266,13 +283,20 @@ function showRaus(r){window.__raus=r||[];var sec=$("rsec");if(!r||!r.length){sec
 document.querySelectorAll('input[name=mode]').forEach(function(r){r.checked=r.value===mode;r.onchange=function(){mode=this.value;localStorage.setItem("tf_mode",mode);$("pb").textContent="Modus geändert – „Karten markieren“ tippen (schon gelesene Tafel-Fotos gehen dann schnell).";};});
 $("pclr").onclick=function(){if(confirm("Plan (alle Excel-Zeilen) wirklich leeren?")){plan=[];savePlan();}};
 renderPlan();
-function showBoards(outs){$("boards").innerHTML="";(outs||[]).forEach(function(o,i){var box=document.createElement("div"),h=document.createElement("h2");h.textContent=o.title+" (gespeichert)";
+function showBoards(outs){$("boards").innerHTML="";(outs||[]).forEach(function(o,i){var box=document.createElement("div"),h=document.createElement("h2");h.textContent=o.title+(boardsFrom?" (Ergebnis vom "+fmtD(boardsFrom)+")":" (gespeichert)");
  var im=document.createElement("img");im.src=URL.createObjectURL(o.blob);im.style.width="100%";im.style.borderRadius="10px";var a=document.createElement("a");a.href=im.src;a.download="tafel_"+(i+1)+"_markiert.jpg";a.textContent="⬇ Bild "+(i+1)+" speichern";a.className="file";
  box.appendChild(h);box.appendChild(im);box.appendChild(a);box.appendChild(shareBtn(o.blob,"tafel_"+(i+1)+"_markiert","Bild "+(i+1)));$("boards").appendChild(box);});markedOuts=(outs||[]).slice();}
-DBP.then(function(){return tx("photos","readonly",function(s){return s.getAll();});}).then(function(all){(all||[]).sort(function(a,b){return a.ts-b.ts;}).forEach(function(r){var b=r.blob;b._id=r.id;if(r.kind==="imp")return;(r.kind==="ex"?exFiles:bdFiles).push(b);});
- thumbs(exFiles,$("tx"));thumbs(bdFiles,$("tb"));return Promise.all([kvGet("items"),kvGet("results"),kvGet("boards"),kvGet("pb"),kvGet("plan"),kvGet("raus")]);})
+DBP.then(function(){return tx("photos","readonly",function(s){return s.getAll();});}).then(async function(all){var now=nowMs(),cut=now-KEEP_MS,today=dayKey(now),del=[];
+ (all||[]).sort(function(a,b){return a.ts-b.ts;}).forEach(function(r){var b=r.blob;b._id=r.id;b._ts=r.ts;if(r.kind==="imp")return;if(r.kind==="ex"){exFiles.push(b);return;}
+  if((r.ts||0)<cut){del.push(r.id);return;}if(dayKey(r.ts)===today)bdFiles.push(b);else bdArchive.push(b);});
+ for(var i=0;i<del.length;i++){await delPhoto(del[i]).catch(function(){});await delCards(del[i]);}
+ var bts=await kvGet("boardsTs").catch(function(){return null;});if(!bts)kvSet("boardsTs",now).catch(function(){});
+ else if(bts<cut){await Promise.all(["boards","raus","pb","results","boardsTs"].map(function(k){return kvSet(k,null).catch(function(){});}));}
+ else if(dayKey(bts)!==today)boardsFrom=bts;
+ if(del.length)$("pb").textContent="🗑 "+del.length+" alte Tafel-Foto(s) (älter als 3 Tage) automatisch gelöscht.";
+ thumbs(exFiles,$("tx"));thumbs(bdFiles,$("tb"));renderArchive();return Promise.all([kvGet("items"),kvGet("results"),kvGet("boards"),kvGet("pb"),kvGet("plan"),kvGet("raus")]);})
  .then(function(v){if((!items||!items.length)&&v[0]&&v[0].length){items=v[0];localStorage.setItem(KEY,JSON.stringify(items));}
-  if(v[1]&&v[1].length===items.length)results=v[1];if((!plan||!plan.length)&&v[4]&&v[4].length){plan=v[4];localStorage.setItem(PKEY,JSON.stringify(plan));renderPlan();}if(v[5])showRaus(v[5]);showBoards(v[2]);if(v[3])$("pb").textContent=v[3];render();})
+  if(v[1]&&v[1].length===items.length)results=v[1];if((!plan||!plan.length)&&v[4]&&v[4].length){plan=v[4];localStorage.setItem(PKEY,JSON.stringify(plan));renderPlan();}if(v[5])showRaus(v[5]);showBoards(v[2]);if(v[3]&&!/automatisch gelöscht/.test($("pb").textContent))$("pb").textContent=v[3];render();})
  .catch(function(e){$("pb").textContent="Speicher nicht verfügbar: "+e.message;}).then(function(){loadBotPlan(true);});
 if(navigator.storage&&navigator.storage.persist)navigator.storage.persist();
 // ---- Plan vom Bot (verschlüsselt, data/plan.enc) ----
@@ -330,7 +354,7 @@ $("botKeySave").onclick=function(){var v=$("botKey").value.trim();if(!v){alert("
  localStorage.setItem(BKEY,v.replace(/^.*#k=/,""));$("botKey").value="";$("botSetup").open=false;localStorage.removeItem("tf_bot_stand");loadBotPlan(false);};
 
 $("allclr").onclick=function(){if(!confirm("Wirklich ALLES löschen? Alle Fotos, die Liste und die Ergebnisse gehen verloren."))return;
- Promise.all([tx("photos","readwrite",function(s){s.clear();}),tx("kv","readwrite",function(s){s.clear();})]).then(function(){exFiles.length=0;bdFiles.length=0;items=[];results=null;plan=[];imp=[];renderImp();$("impText").value="";$("impInfo").textContent="";localStorage.removeItem(KEY);localStorage.removeItem(PKEY);renderPlan();showRaus([]);
+ Promise.all([tx("photos","readwrite",function(s){s.clear();}),tx("kv","readwrite",function(s){s.clear();})]).then(function(){exFiles.length=0;bdFiles.length=0;bdArchive=[];renderArchive();items=[];results=null;plan=[];imp=[];renderImp();$("impText").value="";$("impInfo").textContent="";localStorage.removeItem(KEY);localStorage.removeItem(PKEY);renderPlan();showRaus([]);
  thumbs(exFiles,$("tx"));thumbs(bdFiles,$("tb"));$("boards").innerHTML="";$("pb").textContent="";$("px").textContent="";render();});};
 // ---- Excel-Import (Datei / Einfügen) ----
 var imp=[];
@@ -381,7 +405,7 @@ $("snapPanel").onclick=async function(e){var b=e.target.closest("button");if(!b|
  if(a==="load"){if(bdFiles.length&&!confirm("Aktuelle Tafel-Fotos durch „"+m.name+"“ ersetzen?\n(Die aktuellen werden vorher automatisch als Tafel gespeichert.)"))return;
   if(bdFiles.length)await makeSnap("Automatisch gesichert "+fmtD(Date.now()));
   bdFiles.length=0;await tx("photos","readwrite",function(s){var q=s.getAll();q.onsuccess=function(){q.result.forEach(function(r){if(r.kind==="bd")s.delete(r.id);});};});
-  for(var i=0;i<d.photos.length;i++){var f=d.photos[i];f._id=null;await savePhoto("bd",f);bdFiles.push(f);var c=d.cards[i];if(c){await kvSet("cards_"+f._id+"_"+c.W,c.cards);await kvSet("cardsP_"+f._id,c);}}
+  for(var i=0;i<d.photos.length;i++){var f=d.photos[i];f._id=null;f._ts=null;await savePhoto("bd",f);bdFiles.push(f);var c=d.cards[i];if(c){await kvSet("cards_"+f._id+"_"+c.W,c.cards);await kvSet("cardsP_"+f._id,c);}}
   thumbs(bdFiles,$("tb"));$("snapPanel").hidden=true;$("pb").textContent="📂 „"+m.name+"“ geladen ("+d.photos.length+" Foto(s)). Jetzt „Karten markieren“ tippen – es wird nicht neu gelesen.";$("bb").scrollIntoView({behavior:"smooth",block:"center"});return;}
  if(a==="edit"){var ed=it.querySelector(".ed");var draw=function(){var h="";d.cards.forEach(function(c,pi){if(!c)return;h+='<div class="small" style="margin-top:6px"><b>Foto '+(pi+1)+'</b> – '+c.cards.length+' Karten</div>'+c.cards.map(function(k,ki){return '<div>'+esc(k.wkz||"?")+' / '+esc(k.fauf||"–")+(k.manual?' <i>(manuell)</i>':'')+' <button data-x="'+pi+':'+ki+'" class="del" style="min-height:30px">✕</button></div>';}).join("");});
    h+='<div class="row"><input id="edW" placeholder="Wkz (z. B. 036511)"><input id="edF" inputmode="numeric" placeholder="FAUF"></div><button id="edAdd" type="button">➕ Karte hinzufügen</button><button id="edSave" type="button" class="primary">✔ Speichern</button>';ed.innerHTML=h||"Keine Kartenliste gespeichert.";
