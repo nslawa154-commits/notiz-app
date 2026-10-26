@@ -7,7 +7,8 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <title>Tafel-Finder</title>
-<meta name="app-version" content="2.0 (26.10.2026)">
+<script>(function(){var m=location.hash.match(/(?:^#|&)k=([A-Za-z0-9_\-]+)/);if(m){try{localStorage.setItem("tf_plan_key",m[1]);localStorage.removeItem("tf_bot_stand");localStorage.setItem("arbeit_tab","tafel");}catch(e){}history.replaceState(null,"",location.pathname+location.search);}})();</script>
+<meta name="app-version" content="2.1 (26.10.2026)">
 <meta name="description" content="Excel-Plan und Tafel fotografieren – erledigte Aufträge (Gutmenge = VorgMenge) werden violett markiert">
 <meta name="apple-mobile-web-app-title" content="Tafel-Finder">
 <style>
@@ -34,20 +35,31 @@ canvas{width:100%;height:auto;border-radius:10px;margin-top:8px;touch-action:pin
 <main>
 <details class="card" id="help" open><summary style="font-weight:700;font-size:18px;cursor:pointer">ℹ️ So geht’s</summary>
 <ol style="margin:8px 0 0;padding-left:22px;line-height:1.5">
-<li>Excel-Plan am Bildschirm fotografieren (📷 Kamera) oder Fotos aus der 🖼 Galerie wählen – mehrere Fotos möglich. Kopfzeile (Material … Gutmenge) mit aufs Foto, möglichst gerade.</li>
+<li><b>Normalfall:</b> Der Plan kommt automatisch vom Bot (oben „Plan vom Bot“). Dann direkt weiter mit Schritt 3.</li>
+<li>Nur ohne Bot-Plan: Excel-Plan am Bildschirm fotografieren (📷 Kamera) oder Fotos aus der 🖼 Galerie wählen – mehrere Fotos möglich. Kopfzeile (Material … Gutmenge) mit aufs Foto, möglichst gerade.</li>
 <li>„Erledigte Aufträge suchen“ tippen: Die App liest Material, Auftrag, Vorgang, VorgMenge und Gutmenge. <b>Erledigt = Gutmenge gleich VorgMenge</b> (z. B. 70/70). Ein Auftrag zählt als erledigt, wenn eine seiner Zeilen stimmt. Die Farbe (grün) spielt keine Rolle mehr. Liste kurz prüfen, fehlende Nummern von Hand ergänzen.</li>
 <li>Tafel fotografieren (gerade, scharf, ohne Spiegelung – gern in 2 Hälften) und „Karten markieren“ tippen.</li>
 <li>Gefundene Karten sind violett eingekreist: durchgezogen = sicher, gestrichelt mit „?“ = bitte prüfen.</li>
 </ol>
-<p class="small" style="margin:8px 0 0">Alle Fotos und Ergebnisse bleiben nur auf deinem Handy. Tipp: Über das Browser-Menü „Zum Startbildschirm hinzufügen“. · Version 2.0</p></details>
+<p class="small" style="margin:8px 0 0">Alle Fotos und Ergebnisse bleiben nur auf deinem Handy. Tipp: Über das Browser-Menü „Zum Startbildschirm hinzufügen“. · Version 2.1</p></details>
+<section class="card" id="botCard" style="border:2px solid #6a1b9a">
+<h2>🤖 Plan vom Bot</h2>
+<div id="botInfo" class="prog" style="font-size:16px;color:#1a1a1a">⏳ Plan wird geladen …</div>
+<div class="row"><button class="primary" id="botLoad" type="button">🔄 Plan vom Bot laden</button></div>
+<details id="botSetup" style="margin-top:8px"><summary class="small" style="cursor:pointer">🔑 Einrichtungscode einfügen</summary>
+<div class="small" style="margin-top:6px">Nur einmal nötig. Am besten den Einrichtungslink vom Bot öffnen. Wenn die App vom Startbildschirm (iPhone) den Plan nicht lädt: Code aus dem Link (alles nach <b>#k=</b>) hier einfügen.</div>
+<div class="row"><input type="text" id="botKey" placeholder="Einrichtungscode" autocomplete="off" autocapitalize="off" spellcheck="false"></div>
+<div class="row"><button id="botKeySave" type="button">💾 Code speichern</button></div></details>
+<div class="small" style="margin-top:6px">Der Bot holt den Excel-Plan jeden Morgen aus der E-Mail. Du musst nur noch die Tafel fotografieren und „Karten markieren“ tippen. Der Plan ist verschlüsselt und nur mit dem Einrichtungscode lesbar.</div>
+</section>
 <section class="card">
-<h2>1. Excel-Plan fotografieren</h2>
+<h2>1. Excel-Plan fotografieren <span class="small">(nur nötig, wenn kein Plan vom Bot da ist)</span></h2>
 <div class="row"><label class="file">📷 Kamera<input type="file" id="fxc" accept="image/*" capture="environment"></label>
 <label class="file">🖼 Galerie<input type="file" id="fxg" accept="image/*" multiple></label></div>
 <div class="thumbs" id="tx"></div>
 <div class="row"><button class="primary" id="bx">Erledigte Aufträge suchen</button></div><div class="prog" id="px"></div>
 <details id="exRead" class="imp" hidden><summary id="exReadSum"></summary><div style="max-height:360px;overflow:auto;margin-top:6px"><table><thead><tr><th>Erl.</th><th>Material</th><th>Auftrag</th><th>Vorgang · Vorg/Gut</th></tr></thead><tbody id="exReadRows"></tbody></table></div><div class="small">Bitte mit dem Foto vergleichen – die Texterkennung kann sich bei einzelnen Zahlen irren. „?“ = nicht lesbar.</div></details>
-<details class="imp" id="impBox"><summary><b>📄 Excel importieren</b> <span class="small">(statt Foto – Datei oder Einfügen)</span></summary>
+<details class="imp" id="impBox"><summary><b>📄 Excel importieren</b> <span class="small">(Reserve – Datei oder Einfügen)</span></summary>
 <div class="row"><label class="file">📂 Datei wählen (.xlsx, .xls, .csv, .txt)<input type="file" id="impFile" accept=".xlsx,.xls,.xlsm,.csv,.txt,.tsv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,text/csv,text/plain"></label></div>
 <textarea id="impText" rows="5" placeholder="Aus Excel kopieren & einfügen: Zeilen inkl. Kopfzeile markieren (Material, Auftrag, Vorgang, VorgMenge, Gutmenge) → Kopieren → hier lange drücken → Einfügen"></textarea>
 <div class="row"><button id="impParse" type="button">📋 Eingefügten Text lesen</button></div>
@@ -93,7 +105,7 @@ canvas{width:100%;height:auto;border-radius:10px;margin-top:8px;touch-action:pin
 </section>
 </main>
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@7/dist/tesseract.min.js"></script>
-<script src="core.js?v=20"></script>
+<script src="core.js?v=21"></script>
 <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js" defer></script>
 <script>if(window.self!==window.top){document.documentElement.classList.add("embedded");}else{try{if(localStorage.getItem("tf_help_seen")){document.getElementById("help").open=false;}localStorage.setItem("tf_help_seen","1");}catch(e){}}</script>
 <script>
@@ -242,8 +254,34 @@ DBP.then(function(){return tx("photos","readonly",function(s){return s.getAll();
  thumbs(exFiles,$("tx"));thumbs(bdFiles,$("tb"));return Promise.all([kvGet("items"),kvGet("results"),kvGet("boards"),kvGet("pb"),kvGet("plan"),kvGet("raus")]);})
  .then(function(v){if((!items||!items.length)&&v[0]&&v[0].length){items=v[0];localStorage.setItem(KEY,JSON.stringify(items));}
   if(v[1]&&v[1].length===items.length)results=v[1];if((!plan||!plan.length)&&v[4]&&v[4].length){plan=v[4];localStorage.setItem(PKEY,JSON.stringify(plan));renderPlan();}if(v[5])showRaus(v[5]);showBoards(v[2]);if(v[3])$("pb").textContent=v[3];render();})
- .catch(function(e){$("pb").textContent="Speicher nicht verfügbar: "+e.message;});
+ .catch(function(e){$("pb").textContent="Speicher nicht verfügbar: "+e.message;}).then(function(){loadBotPlan(true);});
 if(navigator.storage&&navigator.storage.persist)navigator.storage.persist();
+// ---- Plan vom Bot (verschlüsselt, data/plan.enc) ----
+var BKEY="tf_plan_key";
+function b64u(s){s=String(s||"").trim().replace(/^.*#k=/,"").replace(/-/g,"+").replace(/_/g,"/").replace(/[^A-Za-z0-9+/]/g,"");while(s.length%4)s+="=";var b=atob(s),a=new Uint8Array(b.length);for(var i=0;i<b.length;i++)a[i]=b.charCodeAt(i);return a;}
+function fmtStand(iso){var d=new Date(iso);return isNaN(d)?String(iso):d.toLocaleString("de-DE",{timeZone:"Europe/Berlin",day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit"}).replace(",","")+" Uhr";}
+function botBanner(t,ok){var el=$("botInfo");el.innerHTML=t;el.style.color=ok?"#1b5e20":"#1a1a1a";}
+async function loadBotPlan(auto){var k=localStorage.getItem(BKEY);
+ if(!k){botBanner("🔑 Noch nicht eingerichtet: Bitte den <b>Einrichtungslink vom Bot öffnen</b> (oder unten „Einrichtungscode einfügen“).");$("botSetup").open=true;return;}
+ if(!window.crypto||!crypto.subtle){botBanner("⚠️ Dieser Browser kann den Plan nicht entschlüsseln.");return;}
+ botBanner("⏳ Plan wird geladen …");var txt;
+ try{var r=await fetch("../data/plan.enc?nocache="+Date.now(),{cache:"no-store"});if(r.status===404){botBanner("ℹ️ Noch kein Plan vom Bot vorhanden.");return;}if(!r.ok)throw new Error("HTTP "+r.status);txt=await r.text();}
+ catch(e){var st=localStorage.getItem("tf_bot_stand");botBanner("📴 Kein Internet – "+(st?"es gilt weiter der Plan vom "+esc(fmtStand(st))+".":"Plan konnte nicht geladen werden."));return;}
+ var doc;try{var raw=b64u(txt),key=await crypto.subtle.importKey("raw",b64u(k),"AES-GCM",false,["decrypt"]);
+  var pt=await crypto.subtle.decrypt({name:"AES-GCM",iv:raw.slice(0,12)},key,raw.slice(12));doc=JSON.parse(new TextDecoder().decode(pt));}
+ catch(e){botBanner("❌ Plan konnte nicht entschlüsselt werden – Einrichtungscode falsch? Bitte den neuesten Einrichtungslink vom Bot öffnen.");$("botSetup").open=true;return;}
+ var A=doc.auftraege||[],dn=A.filter(function(o){return o.done;}).length,same=localStorage.getItem("tf_bot_stand")===doc.stand&&plan.some(function(p){return p.src==="bot";});
+ if(!same){plan=plan.filter(function(p){return p.src!=="bot";});items=items.filter(function(i){return i.src!=="bot";});
+  A.forEach(function(o){var f=o.auftrag||"",w=o.material||"";if(!f&&!w)return;
+   if(!plan.some(function(p){return f?p.fauf===f:normW(p.wkz)===normW(w);}))plan.push({fauf:f,wkz:w,src:"bot"});
+   if(o.done&&!items.some(function(i){return f?i.fauf===f:(!i.fauf&&normW(i.wkz)===normW(w));}))items.push({fauf:f,wkz:w,vorgang:o.vorgang,vorg:o.vorg,gut:o.gut,src:"bot"});});
+  localStorage.setItem("tf_bot_stand",doc.stand);results=null;save();savePlan();render();kvSet("results",null).catch(function(){});}
+ botBanner("✅ Plan vom <b>"+esc(fmtStand(doc.stand))+"</b> geladen – <b>"+dn+" von "+A.length+" fertig</b>. Jetzt Tafel fotografieren → „Karten markieren“.",true);}
+$("botLoad").onclick=function(){loadBotPlan(false);};
+$("botKeySave").onclick=function(){var v=$("botKey").value.trim();if(!v){alert("Bitte den Einrichtungscode einfügen.");return;}
+ try{if(b64u(v).length!==32)throw 0;}catch(e){alert("Der Code ist ungültig. Bitte den ganzen Code aus dem Einrichtungslink einfügen.");return;}
+ localStorage.setItem(BKEY,v.replace(/^.*#k=/,""));$("botKey").value="";$("botSetup").open=false;localStorage.removeItem("tf_bot_stand");loadBotPlan(false);};
+
 $("allclr").onclick=function(){if(!confirm("Wirklich ALLES löschen? Alle Fotos, die Liste und die Ergebnisse gehen verloren."))return;
  Promise.all([tx("photos","readwrite",function(s){s.clear();}),tx("kv","readwrite",function(s){s.clear();})]).then(function(){exFiles.length=0;bdFiles.length=0;items=[];results=null;plan=[];imp=[];renderImp();$("impText").value="";$("impInfo").textContent="";localStorage.removeItem(KEY);localStorage.removeItem(PKEY);renderPlan();showRaus([]);
  thumbs(exFiles,$("tx"));thumbs(bdFiles,$("tb"));$("boards").innerHTML="";$("pb").textContent="";$("px").textContent="";render();});};
