@@ -7,7 +7,8 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <title>Tafel-Finder</title>
-<meta name="description" content="Excel-Plan und Tafel fotografieren – fertige Aufträge werden violett markiert">
+<meta name="app-version" content="2.0 (23.10.2026)">
+<meta name="description" content="Excel-Plan und Tafel fotografieren – erledigte Aufträge (Gutmenge = VorgMenge) werden violett markiert">
 <meta name="apple-mobile-web-app-title" content="Tafel-Finder">
 <style>
 *{box-sizing:border-box}body{margin:0;font-family:system-ui,sans-serif;background:#f3f0f7;color:#1a1a1a;font-size:17px}
@@ -33,42 +34,43 @@ canvas{width:100%;height:auto;border-radius:10px;margin-top:8px;touch-action:pin
 <main>
 <details class="card" id="help" open><summary style="font-weight:700;font-size:18px;cursor:pointer">ℹ️ So geht’s</summary>
 <ol style="margin:8px 0 0;padding-left:22px;line-height:1.5">
-<li>Excel-Plan am Bildschirm fotografieren (📷 Kamera) oder Fotos aus der 🖼 Galerie wählen – mehrere Fotos möglich.</li>
-<li>„Grüne Zeilen suchen“ tippen: Fertige Aufträge (grüne Bemerkung) landen in der Liste. Liste kurz prüfen, fehlende Nummern von Hand ergänzen.</li>
+<li>Excel-Plan am Bildschirm fotografieren (📷 Kamera) oder Fotos aus der 🖼 Galerie wählen – mehrere Fotos möglich. Kopfzeile (Material … Gutmenge) mit aufs Foto, möglichst gerade.</li>
+<li>„Erledigte Aufträge suchen“ tippen: Die App liest Material, Auftrag, Vorgang, VorgMenge und Gutmenge. <b>Erledigt = Gutmenge gleich VorgMenge</b> (z. B. 70/70). Ein Auftrag zählt als erledigt, wenn eine seiner Zeilen stimmt. Die Farbe (grün) spielt keine Rolle mehr. Liste kurz prüfen, fehlende Nummern von Hand ergänzen.</li>
 <li>Tafel fotografieren (gerade, scharf, ohne Spiegelung – gern in 2 Hälften) und „Karten markieren“ tippen.</li>
 <li>Gefundene Karten sind violett eingekreist: durchgezogen = sicher, gestrichelt mit „?“ = bitte prüfen.</li>
 </ol>
-<p class="small" style="margin:8px 0 0">Alle Fotos und Ergebnisse bleiben nur auf deinem Handy. Tipp: Über das Browser-Menü „Zum Startbildschirm hinzufügen“.</p></details>
+<p class="small" style="margin:8px 0 0">Alle Fotos und Ergebnisse bleiben nur auf deinem Handy. Tipp: Über das Browser-Menü „Zum Startbildschirm hinzufügen“. · Version 2.0</p></details>
 <section class="card">
 <h2>1. Excel-Plan fotografieren</h2>
 <div class="row"><label class="file">📷 Kamera<input type="file" id="fxc" accept="image/*" capture="environment"></label>
 <label class="file">🖼 Galerie<input type="file" id="fxg" accept="image/*" multiple></label></div>
 <div class="thumbs" id="tx"></div>
-<div class="row"><button class="primary" id="bx">Grüne Zeilen suchen</button></div><div class="prog" id="px"></div>
+<div class="row"><button class="primary" id="bx">Erledigte Aufträge suchen</button></div><div class="prog" id="px"></div>
+<details id="exRead" class="imp" hidden><summary id="exReadSum"></summary><div style="max-height:360px;overflow:auto;margin-top:6px"><table><thead><tr><th>Erl.</th><th>Material</th><th>Auftrag</th><th>Vorgang · Vorg/Gut</th></tr></thead><tbody id="exReadRows"></tbody></table></div><div class="small">Bitte mit dem Foto vergleichen – die Texterkennung kann sich bei einzelnen Zahlen irren. „?“ = nicht lesbar.</div></details>
 <details class="imp" id="impBox"><summary><b>📄 Excel importieren</b> <span class="small">(statt Foto – Datei oder Einfügen)</span></summary>
 <div class="row"><label class="file">📂 Datei wählen (.xlsx, .xls, .csv, .txt)<input type="file" id="impFile" accept=".xlsx,.xls,.xlsm,.csv,.txt,.tsv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,text/csv,text/plain"></label></div>
-<textarea id="impText" rows="5" placeholder="Aus Excel kopieren & einfügen: Zeilen in Excel markieren (FAUF, Wkz.Nr, AVO, Z, St., Bemerkung) → Kopieren → hier lange drücken → Einfügen"></textarea>
+<textarea id="impText" rows="5" placeholder="Aus Excel kopieren & einfügen: Zeilen inkl. Kopfzeile markieren (Material, Auftrag, Vorgang, VorgMenge, Gutmenge) → Kopieren → hier lange drücken → Einfügen"></textarea>
 <div class="row"><button id="impParse" type="button">📋 Eingefügten Text lesen</button></div>
 <div class="prog" id="impInfo"></div>
 <div id="impWrap" hidden><div class="row"><button id="impAll" type="button" class="small2">☑ Alle erledigt</button><button id="impNone" type="button" class="small2">☐ Keine</button></div>
-<div style="max-height:360px;overflow:auto;margin-top:6px"><table><thead><tr><th>Erl.</th><th>FAUF</th><th>Wkz</th><th>AVO</th><th>Bemerkung</th></tr></thead><tbody id="impRows"></tbody></table></div>
+<div style="max-height:360px;overflow:auto;margin-top:6px"><table><thead><tr><th>Erl.</th><th>Auftrag</th><th>Material</th><th>Vorgang</th><th>Vorg/Gut</th></tr></thead><tbody id="impRows"></tbody></table></div>
 <div class="row"><button class="primary" id="impApply" type="button">✅ In Plan + Liste übernehmen</button></div>
-<div class="small">Häkchen = erledigt (grün) → Variante 1 (violett). Alle Zeilen = Plan → Variante 2 (orange). Beim Einfügen gehen Farben verloren – bitte erledigte Zeilen selbst abhaken (Zeilen mit „Fertig“/„erledigt“ sind vorbelegt).</div></div>
+<div class="small">Häkchen = erledigt (Gutmenge = VorgMenge, automatisch gesetzt) → Variante 1 (violett). Ein Auftrag gilt als erledigt, wenn mindestens eine Zeile abgehakt ist. Alle Zeilen = Plan → Variante 2 (orange). Häkchen kann man von Hand ändern.</div></div>
 </details>
 </section>
 <section class="card" id="modeCard">
 <h2>Was soll gesucht werden?</h2>
-<div class="modes"><label><input type="radio" name="mode" value="fertig"> <b style="color:#8e24aa">Variante 1: Fertige finden</b><br><span class="small">Grüne Zeilen im Excel → Karten auf der Tafel <b>violett</b> einkreisen</span></label>
+<div class="modes"><label><input type="radio" name="mode" value="fertig"> <b style="color:#8e24aa">Variante 1: Fertige finden</b><br><span class="small">Gutmenge = VorgMenge im Excel → Karten auf der Tafel <b>violett</b> einkreisen</span></label>
 <label><input type="radio" name="mode" value="raus"> <b style="color:#ef6c00">Variante 2: Aufräumen – nicht im Plan</b><br><span class="small">Alle Zeilen im Excel lesen → Karten, die <b>nicht</b> im Plan stehen, <b>orange</b> einkreisen = rausnehmen</span></label>
 <label><input type="radio" name="mode" value="beides"> <b>Beides</b><br><span class="small">Violett + orange in einem Bild</span></label></div>
 </section>
 <section class="card">
-<h2>Erledigte Aufträge (grün)</h2>
-<table><thead><tr><th>FAUF</th><th>Wkz.Nr</th><th>Status</th><th></th></tr></thead><tbody id="list"></tbody></table>
-<div class="row"><input type="text" id="mf" inputmode="numeric" placeholder="FAUF (7-stellig)"><input type="text" id="mw" placeholder="Wkz.Nr (z. B. 36511)"></div>
+<h2>Erledigte Aufträge (Gutmenge = VorgMenge)</h2>
+<table><thead><tr><th>Material</th><th>Auftrag</th><th>Vorgang · Vorg/Gut</th><th>Status</th><th></th></tr></thead><tbody id="list"></tbody></table>
+<div class="row"><input type="text" id="mf" inputmode="numeric" placeholder="Auftrag / FAUF (7-stellig)"><input type="text" id="mw" placeholder="Material / Wkz (z. B. 036950.001)"></div>
 <div class="row"><button id="madd">➕ Manuell hinzufügen</button><button id="mclr">🗑 Liste leeren</button></div>
 <div class="row"><button id="allclr" class="del">⚠️ Alles löschen (Fotos, Liste, Ergebnisse)</button></div>
-<div class="small">Liste wird auf dem Gerät gespeichert. Bitte grüne Zeilen kurz mit dem Foto vergleichen.</div>
+<div class="small">Liste wird auf dem Gerät gespeichert. Bitte kurz mit dem Excel-Foto vergleichen.</div>
 <h2 style="margin-top:14px">Plan (alle Zeilen, für Variante 2): <span id="planN">0</span> Aufträge</h2>
 <details><summary class="small">Plan anzeigen</summary><div id="planList" class="small" style="line-height:1.6"></div></details>
 <div class="row"><button id="pclr">🗑 Plan leeren</button></div>
@@ -91,7 +93,7 @@ canvas{width:100%;height:auto;border-radius:10px;margin-top:8px;touch-action:pin
 </section>
 </main>
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@7/dist/tesseract.min.js"></script>
-<script src="core.js?v=18"></script>
+<script src="core.js?v=20"></script>
 <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js" defer></script>
 <script>if(window.self!==window.top){document.documentElement.classList.add("embedded");}else{try{if(localStorage.getItem("tf_help_seen")){document.getElementById("help").open=false;}localStorage.setItem("tf_help_seen","1");}catch(e){}}</script>
 <script>
@@ -107,8 +109,8 @@ function save(){localStorage.setItem(KEY,JSON.stringify(items));if(typeof persis
 function esc(s){return String(s).replace(/[&<>"]/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c];});}
 function render(){var h="";items.forEach(function(it,i){var st="",r=results&&results[i];
  if(r)st=r.status==="sicher"?'<span class="ok">✔ Nr. '+(i+1)+(r.where?' (Foto '+r.where.join(', ')+')':'')+'</span>':r.status==="kandidat"?'<span class="cand">? Nr. '+(i+1)+(r.where?' (Foto '+r.where.join(', ')+')':'')+'</span>':'<span class="no">✗ nicht gefunden</span>';
- h+='<tr><td>'+(i+1)+'. '+esc(it.fauf)+'</td><td>'+esc(it.wkz)+'</td><td>'+st+'</td><td><button class="del" data-i="'+i+'">✕</button></td></tr>';});
- $("list").innerHTML=h||'<tr><td colspan="4" class="small">Noch keine Einträge.</td></tr>';}
+ h+='<tr><td>'+(i+1)+'. '+esc(it.wkz||"–")+'</td><td>'+esc(it.fauf||"–")+'</td><td>'+(it.vorgang||it.vorg!=null?esc(vgTxt(it)):'<span class="small">–</span>')+'</td><td>'+st+'</td><td><button class="del" data-i="'+i+'">✕</button></td></tr>';});
+ $("list").innerHTML=h||'<tr><td colspan="5" class="small">Noch keine Einträge.</td></tr>';}
 $("list").onclick=function(e){var b=e.target.closest("button");if(!b)return;items.splice(+b.dataset.i,1);results=null;save();render();};
 $("madd").onclick=function(){var f=$("mf").value.replace(/\D/g,""),w=$("mw").value.trim();if(!f&&!w)return;items.push({fauf:f,wkz:w});$("mf").value="";$("mw").value="";results=null;save();render();};
 $("mclr").onclick=function(){if(confirm("Liste wirklich leeren?")){items=[];results=null;save();kvSet("results",null);render();}};
@@ -118,10 +120,11 @@ function canvasOf(im,w,gray,crop){crop=crop||[0,0,im.naturalWidth,im.naturalHeig
  if(gray){var d=x.getImageData(0,0,c.width,c.height),p=d.data,hist=new Array(256).fill(0),i;for(i=0;i<p.length;i+=4){var g=(p[i]*0.299+p[i+1]*0.587+p[i+2]*0.114)|0;p[i]=g;hist[g]++;}
   var n=p.length/4,lo=0,hi=255,a=0;while(a<n*0.01)a+=hist[lo++];a=0;while(a<n*0.01)a+=hist[hi--];var sc=255/Math.max(1,hi-lo);
   for(i=0;i<p.length;i+=4){var v=Math.max(0,Math.min(255,(p[i]-lo)*sc));p[i]=p[i+1]=p[i+2]=v;}x.putImageData(d,0,0);}return c;}
-function getWorker(prog){if(worker)return worker;worker=Tesseract.createWorker("eng",1,{logger:function(m){if(m.status==="recognizing text")prog(Math.round(m.progress*100));}})
- .then(function(w){return w.setParameters({tessedit_pageseg_mode:"11"}).then(function(){return w;});});return worker;}
-function ocr(canvas,prog){return getWorker(prog).then(function(w){return w.recognize(canvas,{},{blocks:true});}).then(function(r){var out=[];
- (r.data.blocks||[]).forEach(function(b){b.paragraphs.forEach(function(p){p.lines.forEach(function(l){l.words.forEach(function(x){out.push({t:x.text,b:x.bbox});});});});});return out;});}
+var progFn=function(){};
+function getWorker(prog){progFn=prog||progFn;if(worker)return worker;worker=Tesseract.createWorker("eng",1,{logger:function(m){if(m.status==="recognizing text")progFn(Math.round(m.progress*100));}});return worker;}
+function ocr(canvas,prog,par){var W0;return getWorker(prog).then(function(w){W0=w;progFn=prog||progFn;return w.setParameters({tessedit_pageseg_mode:(par&&par.psm)||"11",tessedit_char_whitelist:(par&&par.wl)||""});})
+ .then(function(){return W0.recognize(canvas,{},{blocks:true});}).then(function(r){var out=[];out.lines=[];
+ (r.data.blocks||[]).forEach(function(b){b.paragraphs.forEach(function(p){p.lines.forEach(function(l){out.lines.push({t:l.text.trim(),b:l.bbox});l.words.forEach(function(x){out.push({t:x.text,b:x.bbox});});});});});return out;});}
 // ---- IndexedDB: Fotos + Ergebnisse dauerhaft speichern ----
 var DBP=new Promise(function(res,rej){var r=indexedDB.open("tafelfinder",1);r.onupgradeneeded=function(){var d=r.result;d.createObjectStore("photos",{keyPath:"id"});d.createObjectStore("kv");};r.onsuccess=function(){res(r.result);};r.onerror=function(){rej(r.error);};});
 function tx(store,mode,fn){return DBP.then(function(d){return new Promise(function(res,rej){var t=d.transaction(store,mode),st=t.objectStore(store),out=fn(st);t.oncomplete=function(){res(out&&out.result);};t.onerror=function(){rej(t.error);};});});}
@@ -135,7 +138,7 @@ function persistItems(){kvSet("items",items).catch(function(){});}
 var markedOuts=[];
 function asFile(b,base){if(b instanceof File&&b.name){var ext=(b.name.match(/\.\w+$/)||[".jpg"])[0];return new File([b],base+ext,{type:b.type||"image/jpeg"});}return new File([b],base+".jpg",{type:b.type||"image/jpeg"});}
 function listText(){var t="Tafel-Finder – Ergebnis "+new Date().toLocaleString("de-DE")+"\n";
- if(items.length){t+="\nFertige Aufträge (grün):\n";items.forEach(function(it,i){var r=results&&results[i];t+=(i+1)+". FAUF "+it.fauf+" / Wkz "+(it.wkz||"–")+(r?" – "+(r.status==="sicher"?"auf Tafel gefunden":r.status==="kandidat"?"prüfen (?)":"nicht gefunden"):"")+"\n";});}
+ if(items.length){t+="\nErledigte Aufträge (Gutmenge = VorgMenge):\n";items.forEach(function(it,i){var r=results&&results[i];t+=(i+1)+". Auftrag "+(it.fauf||"–")+" / Material "+(it.wkz||"–")+(it.vorgang||it.vorg!=null?" (Vorgang "+vgTxt(it)+")":"")+(r?" – "+(r.status==="sicher"?"auf Tafel gefunden":r.status==="kandidat"?"prüfen (?)":"nicht gefunden"):"")+"\n";});}
  var rl=window.__raus||[];if(rl.length){t+="\nAufräumen – nicht im Plan:\n";rl.forEach(function(x){t+=x.n+(x.status==="raus"?". RAUSNEHMEN":"? PRÜFEN")+": Wkz "+(x.wkz||"?")+" / FAUF "+(x.fauf||"nicht lesbar")+" – Foto "+x.foto+", Reihe "+x.row+", Spalte "+x.col+"\n";});}
  return t;}
 async function shareFiles(files,text,title){var ps=$("ps");
@@ -159,18 +162,45 @@ function loadScaled(file,maxDim){return loadImg(file).then(function(im){var W=im
  var c=document.createElement("canvas");c.width=Math.round(W*s);c.height=Math.round(H*s);c.getContext("2d").drawImage(im,0,0,c.width,c.height);URL.revokeObjectURL(im.src);
  c.naturalWidth=c.width;c.naturalHeight=c.height;return c;});}
 var tick=function(){return new Promise(function(r){setTimeout(r,30);});};
+// ---- Excel-Foto lesen: Material, Auftrag, Vorgang, VorgMenge, Gutmenge ----
+async function readExcelPhoto(file,label){var im=await loadScaled(file,4032),TW=2400,sc=Math.min(2,TW/im.width),W=Math.round(im.width*sc),H=Math.round(im.height*sc);
+ var c=document.createElement("canvas");c.width=W;c.height=H;var x=c.getContext("2d");x.drawImage(im,0,0,W,H);
+ var d=x.getImageData(0,0,W,H),p=d.data,g=new Float32Array(W*H),i;for(i=0;i<W*H;i++)g[i]=p[i*4]*0.299+p[i*4+1]*0.587+p[i*4+2]*0.114;
+ var sk=TafelCore.estimateSkew(g,W,H);if(Math.abs(sk)>=1){x.fillStyle="#fff";x.fillRect(0,0,W,H);x.save();x.translate(W/2,H/2);x.rotate(-sk*Math.PI/180);x.drawImage(im,-W/2,-H/2,W,H);x.restore();
+  d=x.getImageData(0,0,W,H);p=d.data;for(i=0;i<W*H;i++)g[i]=p[i*4]*0.299+p[i*4+1]*0.587+p[i*4+2]*0.114;}
+ $("px").textContent=label+": Bild wird aufbereitet …";await tick();
+ var o=TafelCore.prepExcel(g,W,H);g=null;for(i=0;i<W*H;i++){p[i*4]=p[i*4+1]=p[i*4+2]=o[i];p[i*4+3]=255;}x.putImageData(d,0,0);d=null;o=null;
+ im.width=0;var words=await ocr(c,function(q){$("px").textContent=label+": Texterkennung "+q+" %";});
+ var lay=TafelCore.excelLayout(words,W,H);if(!lay){c.width=0;return {err:"Spalten „VorgMenge“ und „Gutmenge“ nicht gefunden – bitte die Kopfzeile mit fotografieren."};}
+ var names={mat:"Material",auf:"Auftrag",vg:"Vorgang",vm:"VorgMenge",gm:"Gutmenge"},lines={},ks=Object.keys(names).filter(function(k){return lay.cols[k];});
+ for(var j=0;j<ks.length;j++){var k=ks[j],col=lay.cols[k],mg=Math.round(lay.ch*0.5),pad=30,yTop=Math.round(lay.hy+lay.ch*0.7),sw=Math.round(col.x1-col.x0)+2*mg+2*pad,sh=H-yTop+2*pad;
+  var s=document.createElement("canvas");s.width=sw;s.height=sh;var sx=s.getContext("2d");sx.fillStyle="#fff";sx.fillRect(0,0,sw,sh);
+  sx.setTransform(1,0,-col.lean,1,-(col.x0-mg)+pad+col.lean*lay.hy,-yTop+pad);sx.drawImage(c,0,0);
+  var r=await ocr(s,function(q){$("px").textContent=label+": Spalte "+names[k]+" "+q+" %";},{psm:"6",wl:"0123456789."});
+  lines[k]=r.lines.map(function(l){return {t:l.t,y:(l.b.y0+l.b.y1)/2+yTop-pad};});s.width=0;}
+ c.width=0;var ex=TafelCore.wordsToCols(words,lay),rows=TafelCore.assembleRows(lines,lay,ex);
+ return TafelCore.evalOrders(rows);}
+function vgTxt(o){return (o.vorgang||"–")+" · "+(o.vorg!=null?o.vorg:"?")+"/"+(o.gut!=null?o.gut:"?");}
+function showRead(list){var el=$("exRead");if(!list||!list.length){el.hidden=true;return;}el.hidden=false;
+ var dn=list.filter(function(o){return o.done;}).length;$("exReadSum").textContent="Gelesen: "+list.length+" Aufträge, davon "+dn+" erledigt (Gutmenge = VorgMenge)";
+ $("exReadRows").innerHTML=list.map(function(o){return '<tr><td>'+(o.done?'<span class="ok">✔</span>':'<span class="small">–</span>')+'</td><td>'+esc(o.wkz||"?")+'</td><td>'+esc(o.fauf||"?")+'</td><td>'+esc(vgTxt(o))+(o.doneVg&&o.doneVg.length>1?' <span class="small">(auch '+esc(o.doneVg.slice(1).join(", "))+')</span>':'')+'</td></tr>';}).join("");}
+function addOrders(orders,src){var np=0,ni=0;orders.forEach(function(r){if(!r.fauf&&!r.wkz)return;
+  if(!plan.some(function(p){return r.fauf?p.fauf===r.fauf:normW(p.wkz)===normW(r.wkz);})){plan.push({fauf:r.fauf,wkz:r.wkz});np++;}
+  if(r.done){var it={fauf:r.fauf,wkz:r.wkz,vorgang:r.vorgang,vorg:r.vorg,gut:r.gut,src:src};var k=items.findIndex(function(i){return r.fauf?i.fauf===r.fauf:(!i.fauf&&normW(i.wkz)===normW(r.wkz));});
+   if(k<0){items.push(it);ni++;}else if(!items[k].vorgang){items[k].vorgang=r.vorgang;items[k].vorg=r.vorg;items[k].gut=r.gut;}}});
+ savePlan();return {np:np,ni:ni};}
+function normW(w){return TafelCore.normWkz(w||"");}
 $("bx").onclick=async function(){if(!exFiles.length){alert("Bitte zuerst Excel-Foto(s) hinzufügen.");return;}
  if(typeof Tesseract==="undefined"){$("px").textContent="Texterkennung nicht geladen (Internet?). Bitte Nummern manuell eintragen.";return;}
- var found=0,tot=0,planAdded=0;try{for(var k=0;k<exFiles.length;k++){var im=await loadScaled(exFiles[k],2667);
-  var col=canvasOf(im,2000,false),gr=canvasOf(im,2000,true),data=col.getContext("2d").getImageData(0,0,col.width,col.height).data,W=col.width,H=col.height;
-  var words=await ocr(gr,function(p){$("px").textContent="Foto "+(k+1)+"/"+exFiles.length+": Texterkennung "+p+" %";});
-  var rows=TafelCore.findGreenRows(words,function(x,y){var i=(y*W+x)*4;return[data[i],data[i+1],data[i+2]];},W,H);
-  var pn=0;rows.forEach(function(r){if(!plan.some(function(p){return p.fauf===r.fauf;})){plan.push({fauf:r.fauf,wkz:r.wkz});pn++;}});planAdded+=pn;savePlan();
-  rows.filter(function(r){return r.green;}).forEach(function(r){tot++;if(!items.some(function(i){return i.fauf===r.fauf;})){items.push({fauf:r.fauf,wkz:r.wkz});found++;}});
-  col.width=gr.width=im.width=0;data=null;results=null;save();render();await tick();}
-  $("px").textContent="✅ "+exFiles.length+" Foto(s): "+tot+" grüne Zeile(n), davon "+found+" neu übernommen (doppelte FAUF ignoriert). Plan: "+plan.length+" Aufträge (+"+planAdded+"). Bitte prüfen.";}
+ var all=[],errs=[],ni=0,np=0;try{for(var k=0;k<exFiles.length;k++){var res=await readExcelPhoto(exFiles[k],"Foto "+(k+1)+"/"+exFiles.length);
+   if(res.err){errs.push("Foto "+(k+1)+": "+res.err);continue;}
+   var a=addOrders(res.orders,"foto");ni+=a.ni;np+=a.np;res.orders.forEach(function(o){all.push(o);});results=null;save();render();await tick();}
+  kvSet("exRead",all).catch(function(){});showRead(all);
+  var dn=all.filter(function(o){return o.done;}).length;
+  $("px").textContent=(all.length?"✅ "+all.length+" Aufträge gelesen, "+dn+" erledigt (Gutmenge = VorgMenge), "+ni+" neu in der Liste. Plan: "+plan.length+" (+"+np+"). Bitte mit dem Foto vergleichen.":"")+(errs.length?" ⚠️ "+errs.join(" "):"");}
  catch(e){$("px").textContent="Fehler bei der Auswertung: "+e.message;}
  results=null;save();render();};
+kvGet("exRead").then(function(l){if(l)showRead(l);}).catch(function(){});
 function drawBoard(c,im,matches,clean){var W=im.width,H=im.height;c.width=W;c.height=H;var x=c.getContext("2d");x.drawImage(im,0,0);
  var lw=Math.max(8,W/120);x.strokeStyle="#8e24aa";x.fillStyle="#8e24aa";x.font="bold "+Math.round(W/35)+"px sans-serif";
  matches.forEach(function(m,i){m.cards.forEach(function(cd){if(cd.x==null)return;var r=Math.max(cd.r,W/14);x.lineWidth=m.status==="sicher"?lw:lw*0.6;x.setLineDash(m.status==="sicher"?[]:[lw*2,lw*1.5]);
@@ -219,30 +249,29 @@ $("allclr").onclick=function(){if(!confirm("Wirklich ALLES löschen? Alle Fotos,
  thumbs(exFiles,$("tx"));thumbs(bdFiles,$("tb"));$("boards").innerHTML="";$("pb").textContent="";$("px").textContent="";render();});};
 // ---- Excel-Import (Datei / Einfügen) ----
 var imp=[];
-function renderImp(){var w=$("impWrap");w.hidden=!imp.length;$("impRows").innerHTML=imp.map(function(r,i){return '<tr><td><input type="checkbox" data-i="'+i+'"'+(r.done?' checked':'')+'></td><td>'+esc(r.fauf)+'</td><td>'+esc(r.wkz)+'</td><td>'+esc(r.avo)+'</td><td>'+esc(r.bem)+(r.green?' <span title="grün in Excel">🟩</span>':'')+'</td></tr>';}).join("");
- var d=imp.filter(function(r){return r.done;}).length;if(imp.length)$("impInfo").textContent="📄 "+imp.length+" Zeilen gelesen, davon "+d+" als erledigt markiert"+(imp._src?" ("+imp._src+")":"")+".";}
+function renderImp(){var w=$("impWrap");w.hidden=!imp.length;$("impRows").innerHTML=imp.map(function(r,i){return '<tr><td><input type="checkbox" data-i="'+i+'"'+(r.done?' checked':'')+'></td><td>'+esc(r.auftrag||r.fauf||"")+'</td><td>'+esc(r.material||r.wkz||"")+'</td><td>'+esc(r.vorgang||r.avo||"")+'</td><td>'+(r.vorg!=null||r.gut!=null?esc((r.vorg!=null?r.vorg:"?")+"/"+(r.gut!=null?r.gut:"?")):esc(r.bem||""))+'</td></tr>';}).join("");
+ var d=imp.filter(function(r){return r.done;}).length;if(imp.length)$("impInfo").textContent="📄 "+imp.length+" Zeilen gelesen, davon "+d+" erledigt"+(imp._src?" ("+imp._src+")":"")+".";}
 $("impRows").onchange=function(e){var i=e.target.dataset.i;if(i==null)return;imp[+i].done=e.target.checked;kvSet("imported",{rows:imp,src:imp._src||""});renderImp();};
 $("impAll").onclick=function(){imp.forEach(function(r){r.done=true;});kvSet("imported",{rows:imp,src:imp._src||""});renderImp();};
 $("impNone").onclick=function(){imp.forEach(function(r){r.done=false;});kvSet("imported",{rows:imp,src:imp._src||""});renderImp();};
-function setImp(res,src){if(!res.rows.length){$("impInfo").textContent="⚠️ Keine FAUF-Nummern (7-stellig) gefunden. Bitte Spalten FAUF und Wkz.Nr mitkopieren.";return;}
- imp=res.rows;imp._src=src+(res.hasColor?", Farben gelesen":", keine Farben – bitte abhaken");kvSet("imported",{rows:imp,src:imp._src});renderImp();}
-function themeGreen(t){return t===9;}
+function setImp(res,src){if(!res.rows.length){$("impInfo").textContent="⚠️ Keine Aufträge gefunden. Bitte Kopfzeile und Spalten Material, Auftrag, Vorgang, VorgMenge, Gutmenge mitkopieren.";return;}
+ imp=res.rows;imp._src=src+(res.hasQty?", erledigt = Gutmenge = VorgMenge":", ⚠️ keine Spalten VorgMenge/Gutmenge – bitte selbst abhaken");kvSet("imported",{rows:imp,src:imp._src});renderImp();}
 function readXlsx(buf,name){if(typeof XLSX==="undefined"){$("impInfo").textContent="Excel-Leser nicht geladen (Internet?). Alternativ: In Excel kopieren und unten einfügen.";return;}
- var wb=XLSX.read(buf,{type:"array",cellStyles:true}),best=null;
- wb.SheetNames.forEach(function(n){var ws=wb.Sheets[n];if(!ws["!ref"])return;var rg=XLSX.utils.decode_range(ws["!ref"]);var grid=XLSX.utils.sheet_to_json(ws,{header:1,raw:false,defval:"",blankrows:true});
-  var res=TafelCore.parseTable(grid,function(r,c){var cell=ws[XLSX.utils.encode_cell({r:r+rg.s.r,c:c+rg.s.c})];if(!cell||!cell.s)return undefined;var f=cell.s.fgColor||{};
-   if(cell.s.patternType&&cell.s.patternType!=="none"){if((f.rgb&&TafelCore.isGreenHex(f.rgb))||themeGreen(f.theme))return "green";return null;}return null;});
-  if(!best||res.rows.length>best.res.rows.length)best={res:res,n:n};});
+ var wb=XLSX.read(buf,{type:"array"}),best=null;
+ wb.SheetNames.forEach(function(n){var ws=wb.Sheets[n];if(!ws["!ref"])return;var grid=XLSX.utils.sheet_to_json(ws,{header:1,raw:false,defval:"",blankrows:true});
+  var res=TafelCore.parseTable(grid);var sc=res.rows.length+(res.hasQty?1000:0);if(!best||sc>best.sc)best={res:res,n:n,sc:sc};});
  if(best)setImp(best.res,name+" / Blatt „"+best.n+"“");else setImp({rows:[]},name);}
 $("impFile").onchange=function(){var f=this.files[0];if(!f)return;this.value="";$("impInfo").textContent="⏳ "+f.name+" wird gelesen …";
  savePhoto("imp",f).catch(function(){});
  var rd=new FileReader();if(/\.(csv|txt|tsv)$/i.test(f.name)||/^text\//.test(f.type)){rd.onload=function(){setImp(TafelCore.parseText(rd.result),f.name);};rd.readAsText(f);}
  else{rd.onload=function(){try{readXlsx(new Uint8Array(rd.result),f.name);}catch(e){$("impInfo").textContent="Fehler beim Lesen: "+e.message;}};rd.readAsArrayBuffer(f);}};
 $("impParse").onclick=function(){var t=$("impText").value;if(!t.trim()){alert("Bitte zuerst Zeilen aus Excel einfügen.");return;}kvSet("impText",t);setImp(TafelCore.parseText(t),"eingefügt");};
-$("impApply").onclick=function(){if(!imp.length)return;var np=0,ni=0,nr=0;
- imp.forEach(function(r){if(!plan.some(function(p){return p.fauf===r.fauf;})){plan.push({fauf:r.fauf,wkz:r.wkz});np++;}});savePlan();
- imp.forEach(function(r){var k=items.findIndex(function(i){return i.fauf===r.fauf;});if(r.done&&k<0){items.push({fauf:r.fauf,wkz:r.wkz,src:"imp"});ni++;}else if(!r.done&&k>=0&&items[k].src==="imp"){items.splice(k,1);nr++;}});
- results=null;save();render();$("impInfo").textContent="✅ Übernommen: Plan +"+np+" (gesamt "+plan.length+"), erledigt +"+ni+(nr?", "+nr+" Häkchen entfernt":"")+". Jetzt Tafel fotografieren → „Karten markieren“.";};
+$("impApply").onclick=function(){if(!imp.length)return;var ord=[],map={};
+ imp.forEach(function(r){var f=r.auftrag||r.fauf||"",m=r.material||r.wkz||"",key=f||("M"+m);if(!f&&!m)return;var o=map[key];if(!o){o=map[key]={fauf:f,wkz:m,done:false,vorgang:"",vorg:null,gut:null};ord.push(o);}
+  if(!o.wkz&&m)o.wkz=m;if(r.done&&!o.done){o.done=true;o.vorgang=r.vorgang||"";o.vorg=r.vorg;o.gut=r.gut;}});
+ var nr=0;ord.forEach(function(o){if(!o.done){var k=items.findIndex(function(i){return i.src==="imp"&&(o.fauf?i.fauf===o.fauf:normW(i.wkz)===normW(o.wkz));});if(k>=0){items.splice(k,1);nr++;}}});
+ var a=addOrders(ord,"imp");results=null;save();render();
+ $("impInfo").textContent="✅ Übernommen: "+ord.length+" Aufträge, Plan +"+a.np+" (gesamt "+plan.length+"), erledigt +"+a.ni+(nr?", "+nr+" Häkchen entfernt":"")+". Jetzt Tafel fotografieren → „Karten markieren“.";};
 Promise.all([kvGet("imported"),kvGet("impText")]).then(function(v){if(v[0]&&v[0].rows&&v[0].rows.length){imp=v[0].rows;imp._src=v[0].src;renderImp();}if(v[1])$("impText").value=v[1];}).catch(function(){});
 
 // ---- Tafel-Schnappschüsse ----
