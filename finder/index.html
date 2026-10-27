@@ -8,7 +8,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <title>Tafel-Finder</title>
 <script>(function(){var m=location.hash.match(/(?:^#|&)k=([A-Za-z0-9_\-]+)/);if(m){try{localStorage.setItem("tf_plan_key",m[1]);localStorage.removeItem("tf_bot_stand");localStorage.setItem("arbeit_tab","tafel");}catch(e){}history.replaceState(null,"",location.pathname+location.search);}})();</script>
-<meta name="app-version" content="2.7 (27.10.2026)">
+<meta name="app-version" content="2.8 (27.10.2026)">
 <meta name="description" content="Excel-Plan und Tafel fotografieren – erledigte Aufträge (Gutmenge = VorgMenge) werden violett markiert">
 <meta name="apple-mobile-web-app-title" content="Tafel-Finder">
 <style>
@@ -33,6 +33,13 @@ canvas{width:100%;height:auto;border-radius:10px;margin-top:8px;touch-action:pin
 #dropOv{position:fixed;inset:0;z-index:90;background:#6a1b9acc;color:#fff;display:flex;align-items:center;justify-content:center;flex-direction:column;font-size:30px;font-weight:800;text-align:center;pointer-events:none;border:8px dashed #fff}
 #dropOv .small{color:#fff;font-size:18px;font-weight:400;margin-top:8px}
 #dropMsg{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);z-index:95;max-width:92%;background:#1a1a1a;color:#fff;padding:12px 18px;border-radius:12px;font-size:17px;box-shadow:0 3px 10px #0006}
+.fold{margin-top:10px;border:2px solid #e0d7ea;border-radius:12px;background:#fff}.fold>summary{list-style:none;cursor:pointer;padding:12px 14px;font-size:19px;font-weight:800;min-height:58px;display:flex;align-items:center;gap:8px}
+.fold>summary::-webkit-details-marker{display:none}.fold>summary .tg{margin-left:auto;font-size:16px;background:#ece4f3;color:#4a148c;padding:8px 12px;border-radius:10px;white-space:nowrap}
+.fold.okf{border-color:#81c784}.fold.okf>summary{color:#1b5e20}.fold.opf{border-color:#ffb74d}.fold.opf>summary{color:#e65100}
+.apgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px;margin-top:8px}
+.apb{flex-direction:column;min-height:84px;font-size:19px;font-weight:800;border:3px solid #d1c4e9;background:#fff;color:#4a148c;line-height:1.25;padding:8px}
+.apb .c{font-size:13px;font-weight:600;color:#666}.apb .z{font-size:17px;font-weight:800;color:#1b5e20;margin-top:2px}.apb.on{background:#6a1b9a;color:#fff;border-color:#4a148c}.apb.on .c,.apb.on .z{color:#fff}
+.op{padding:10px 14px;border-top:1px solid #eee}.op .m{font-size:19px;font-weight:800}.op .d{font-size:16px;margin-top:3px}.op .st{font-size:17px;font-weight:800;margin-top:3px}.op .st.f{color:#2e7d32}.op .st.o{color:#e65100}.op .st.w{color:#c62828}
 </style>
 <script>
 // ---- Selbst-Aktualisierung (v2.3): neue Version erkennen und einmal automatisch neu laden ----
@@ -50,7 +57,7 @@ canvas{width:100%;height:auto;border-radius:10px;margin-top:8px;touch-action:pin
 </script>
 </head>
 <body>
-<header><h1>🔍 Tafel-Finder <small style="font-size:13px;opacity:.9;font-weight:600;background:#ffffff33;padding:2px 8px;border-radius:8px">Version 2.7</small></h1></header>
+<header><h1>🔍 Tafel-Finder <small style="font-size:13px;opacity:.9;font-weight:600;background:#ffffff33;padding:2px 8px;border-radius:8px">Version 2.8</small></h1></header>
 <main>
 <section class="card" id="markCard" style="border:3px solid #8e24aa;background:#f6effb">
 <div id="markInfo" style="font-size:21px;font-weight:800;color:#4a148c;line-height:1.35">⏳ …</div>
@@ -66,7 +73,7 @@ canvas{width:100%;height:auto;border-radius:10px;margin-top:8px;touch-action:pin
 <li>Tafel fotografieren (gerade, scharf, ohne Spiegelung – gern in 2 Hälften) und „Karten markieren“ tippen.</li>
 <li>Gefundene Karten sind violett eingekreist: durchgezogen = sicher, gestrichelt mit „?“ = bitte prüfen.</li>
 </ol>
-<p class="small" style="margin:8px 0 0">Alle Fotos und Ergebnisse bleiben nur auf deinem Handy. Tipp: Über das Browser-Menü „Zum Startbildschirm hinzufügen“. · Version 2.7</p></details>
+<p class="small" style="margin:8px 0 0">Alle Fotos und Ergebnisse bleiben nur auf deinem Handy. Tipp: Über das Browser-Menü „Zum Startbildschirm hinzufügen“. · Version 2.8</p></details>
 <section class="card" id="botCard" style="border:2px solid #6a1b9a">
 <h2>🤖 Plan vom Bot <span id="pairOk" class="ok" hidden>· Gekoppelt ✓</span></h2>
 <div id="botInfo" class="prog" style="font-size:16px;color:#1a1a1a">⏳ Plan wird geladen …</div>
@@ -81,6 +88,15 @@ canvas{width:100%;height:auto;border-radius:10px;margin-top:8px;touch-action:pin
 <div class="row"><input type="text" id="botKey" placeholder="Code" autocomplete="off" autocapitalize="off" spellcheck="false"></div>
 <div class="row"><button id="botKeySave" type="button">💾 Code speichern</button></div></details>
 <div class="small" style="margin-top:6px">Der Bot holt den Excel-Plan jeden Morgen aus der E-Mail. Du musst nur noch die Tafel fotografieren – die App markiert die Fotos selbst mit dem neuesten Plan. Der Plan ist verschlüsselt und nur auf gekoppelten Geräten lesbar.</div>
+</section>
+<section class="card" id="apCard" style="border:3px solid #6a1b9a">
+<h2 style="font-size:20px">🏭 Arbeitsgänge – was ist fertig?</h2>
+<div id="apInfo" style="font-size:16px">⏳ Plan wird geladen …</div>
+<div class="apgrid" id="apBtns"></div>
+<div id="apTitle" style="font-size:18px;font-weight:800;margin-top:12px;color:#4a148c"></div>
+<details class="fold okf" id="apDone" hidden><summary><span id="apDoneT">✅ Fertig</span><span class="tg">▸ öffnen</span></summary><div id="apDoneL"></div></details>
+<details class="fold opf" id="apOpen" hidden><summary><span id="apOpenT">⏳ Offen</span><span class="tg">▸ öffnen</span></summary><div id="apOpenL"></div></details>
+<div class="small" style="margin-top:8px">Fertig an diesem Arbeitsplatz = Gutmenge gleich VorgMenge für diesen Vorgang (jede Buchung nur einmal gezählt). Für die Tafel (violette Kreise) gilt weiter: Auftrag erledigt, wenn mindestens eine Zeile stimmt.</div>
 </section>
 <section class="card">
 <h2>1. Excel-Plan fotografieren <span class="small">(nur nötig, wenn kein Plan vom Bot da ist)</span></h2>
@@ -110,13 +126,13 @@ canvas{width:100%;height:auto;border-radius:10px;margin-top:8px;touch-action:pin
 </section>
 <section class="card">
 <h2>Erledigte Aufträge (Gutmenge = VorgMenge)</h2>
-<table><thead><tr><th>Material</th><th>Auftrag</th><th>Vorgang · Vorg/Gut</th><th>Status</th><th></th></tr></thead><tbody id="list"></tbody></table>
+<details class="fold okf" id="doneBox"><summary><span id="doneT">✅ Erledigte Aufträge (0)</span><span class="tg">▸ öffnen</span></summary><div style="padding:0 6px 6px"><table><thead><tr><th>Material</th><th>Auftrag</th><th>Vorgang · Vorg/Gut</th><th>Status</th><th></th></tr></thead><tbody id="list"></tbody></table></div></details>
 <div class="row"><input type="text" id="mf" inputmode="numeric" placeholder="Auftrag / FAUF (7-stellig)"><input type="text" id="mw" placeholder="Material / Wkz (z. B. 012345.001)"></div>
 <div class="row"><button id="madd">➕ Manuell hinzufügen</button><button id="mclr">🗑 Liste leeren</button></div>
 <div class="row"><button id="allclr" class="del">⚠️ Alles löschen (Fotos, Liste, Ergebnisse)</button></div>
 <div class="small">Liste wird auf dem Gerät gespeichert. Bitte kurz mit dem Excel-Foto vergleichen.</div>
 <h2 style="margin-top:14px">Plan (alle Zeilen, für Variante 2): <span id="planN">0</span> Aufträge</h2>
-<details><summary class="small">Plan anzeigen</summary><div id="planList" class="small" style="line-height:1.6"></div></details>
+<details class="fold" id="planBox"><summary><span id="planT">📋 Alle Aufträge im Plan</span><span class="tg">▸ öffnen</span></summary><div id="planList" class="small" style="line-height:1.6;padding:0 14px 12px"></div></details>
 <div class="row"><button id="pclr">🗑 Plan leeren</button></div>
 </section>
 <section class="card">
@@ -145,7 +161,7 @@ canvas{width:100%;height:auto;border-radius:10px;margin-top:8px;touch-action:pin
 </section>
 </main>
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@7/dist/tesseract.min.js"></script>
-<script src="core.js?v=23"></script>
+<script src="core.js?v=28"></script>
 <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js" defer></script>
 <script>if(window.self!==window.top){document.documentElement.classList.add("embedded");}else{try{if(localStorage.getItem("tf_help_seen")){document.getElementById("help").open=false;}localStorage.setItem("tf_help_seen","1");}catch(e){}}</script>
 <script>
@@ -156,13 +172,13 @@ var items=[];try{items=JSON.parse(localStorage.getItem(KEY))||[];}catch(e){}
 var results=null,worker=null,PKEY="tafelfinder_plan_v1",plan=[];try{plan=JSON.parse(localStorage.getItem(PKEY))||[];}catch(e){}
 var mode=localStorage.getItem("tf_mode")||"fertig";
 function savePlan(){localStorage.setItem(PKEY,JSON.stringify(plan));if(typeof kvSet==="function")kvSet("plan",plan).catch(function(){});renderPlan();}
-function renderPlan(){var el=document.getElementById("planN");if(!el)return;el.textContent=plan.length;document.getElementById("planList").innerHTML=plan.map(function(p){return esc(p.fauf)+" / "+esc(p.wkz||"–");}).join(" · ")||"leer";}
+function renderPlan(){var el=document.getElementById("planN");if(!el)return;el.textContent=plan.length;var pt=document.getElementById("planT");if(pt)pt.textContent="📋 Alle Aufträge im Plan ("+plan.length+")";document.getElementById("planList").innerHTML=plan.map(function(p){return esc(p.fauf)+" / "+esc(p.wkz||"–");}).join(" · ")||"leer";}
 function save(){localStorage.setItem(KEY,JSON.stringify(items));if(typeof persistItems==="function")persistItems();}
 function esc(s){return String(s).replace(/[&<>"]/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c];});}
 function render(){var h="";items.forEach(function(it,i){var st="",r=results&&results[i];
  if(r)st=r.status==="sicher"?'<span class="ok">✔ Nr. '+(i+1)+(r.where?' (Foto '+r.where.join(', ')+')':'')+'</span>':r.status==="kandidat"?'<span class="cand">? Nr. '+(i+1)+(r.where?' (Foto '+r.where.join(', ')+')':'')+'</span>':'<span class="no">✗ nicht gefunden</span>';
  h+='<tr><td>'+(i+1)+'. '+esc(it.wkz||"–")+'</td><td>'+esc(it.fauf||"–")+'</td><td>'+(it.vorgang||it.vorg!=null?esc(vgTxt(it)):'<span class="small">–</span>')+'</td><td>'+st+'</td><td><button class="del" data-i="'+i+'">✕</button></td></tr>';});
- $("list").innerHTML=h||'<tr><td colspan="5" class="small">Noch keine Einträge.</td></tr>';}
+ $("list").innerHTML=h||'<tr><td colspan="5" class="small">Noch keine Einträge.</td></tr>';$("doneT").textContent="✅ Erledigte Aufträge ("+items.length+")";}
 $("list").onclick=function(e){var b=e.target.closest("button");if(!b)return;items.splice(+b.dataset.i,1);results=null;save();render();};
 $("madd").onclick=function(){var f=$("mf").value.replace(/\D/g,""),w=$("mw").value.trim();if(!f&&!w)return;items.push({fauf:f,wkz:w});$("mf").value="";$("mw").value="";results=null;save();render();};
 $("mclr").onclick=function(){if(confirm("Liste wirklich leeren?")){items=[];results=null;save();kvSet("results",null);render();}};
@@ -371,6 +387,7 @@ async function loadBotPlan(auto){var k=localStorage.getItem(BKEY);
  var doc;try{var raw=b64u(txt),key=await crypto.subtle.importKey("raw",b64u(k),"AES-GCM",false,["decrypt"]);
   var pt=await crypto.subtle.decrypt({name:"AES-GCM",iv:raw.slice(0,12)},key,raw.slice(12));doc=JSON.parse(new TextDecoder().decode(pt));}
  catch(e){botBanner("❌ Plan konnte nicht entschlüsselt werden. Bitte die App neu mit dem Bot koppeln.");localStorage.removeItem(BKEY);$("pairOk").hidden=true;showPair();return;}
+ setApRows(doc.rows||[],doc.stand);kvSet("botRows",{stand:doc.stand,rows:doc.rows||[]}).catch(function(){});
  var A=doc.auftraege||[],dn=A.filter(function(o){return o.done;}).length;localStorage.setItem("tf_bot_dn",dn);var same=localStorage.getItem("tf_bot_stand")===doc.stand&&plan.some(function(p){return p.src==="bot";});
  if(!same){plan=plan.filter(function(p){return p.src!=="bot";});items=items.filter(function(i){return i.src!=="bot";});
   A.forEach(function(o){var f=o.auftrag||"",w=o.material||"";if(!f&&!w)return;
@@ -518,6 +535,29 @@ document.addEventListener("paste",function(e){var t=e.target,tag=t&&t.tagName;if
 // Touch-Geräte (iPhone): Feld dient als Tipp-Feld zur Auswahl
 if(window.matchMedia&&matchMedia("(hover:none) and (pointer:coarse)").matches){document.querySelectorAll(".drop").forEach(function(d){var T=d.querySelector(".dzT"),S=d.querySelector(".dzS");
  T.textContent=d.id==="dzI"?"📂 Hier tippen: Excel-Datei auswählen":d.id==="dzX"?"🖼 Hier tippen: Excel-Fotos auswählen":"🖼 Hier tippen: Bilder auswählen";S.textContent=d.id==="dzI"?".xlsx, .xls, .csv":"mehrere Bilder auf einmal möglich";});}
+// ---- v2.8: Arbeitsgänge je Arbeitsplatz (Filter-Knöpfe, zuklappbare Listen fertig/offen) ----
+var apSel=localStorage.getItem("tf_ap")||"ALLE",apData=null;
+function apLabel(a){return a==="?"?"ohne Arbeitsplatz":(TafelCore.AP_NAMES[a]?TafelCore.AP_NAMES[a]+" ("+a+")":a);}
+function setApRows(rows,stand){try{apData=TafelCore.opsByAp(rows);apData.stand=stand;}catch(e){apData=null;}renderAp();}
+function opHtml(o,showAp){var st;if(o.done)st='<div class="st f">✅ fertig</div>';else if(o.fehlt!=null&&o.fehlt<0)st='<div class="st w">⚠️ Gut '+(-o.fehlt)+' Stück mehr als Vorgabe – bitte prüfen</div>';
+ else st='<div class="st o">⏳ offen'+(o.fehlt!=null?' – fehlen '+o.fehlt+' Stück':'')+'</div>';
+ return '<div class="op"><div class="m">Wkz '+esc(o.material||"–")+'</div><div class="d">Auftrag <b>'+esc(o.auftrag||"–")+'</b> · Vorgang <b>'+esc(o.vorgang||"–")+'</b>'+(showAp?' · '+esc(apLabel(o.ap)):'')+'</div>'+
+  '<div class="d">Vorgabe <b>'+(o.vorg!=null?o.vorg:"?")+'</b> · Gut <b>'+(o.gut!=null?o.gut:"?")+'</b> Stück</div>'+st+'</div>';}
+function renderAp(){var info=$("apInfo"),bt=$("apBtns");
+ if(!apData||!apData.ops.length){info.textContent="📋 Noch kein Plan vom Bot – sobald er da ist, erscheinen hier die Arbeitsgänge mit Stückzahlen.";bt.innerHTML="";$("apTitle").textContent="";$("apDone").hidden=$("apOpen").hidden=true;return;}
+ if(apSel!=="ALLE"&&!apData.aps.some(function(a){return a.ap===apSel;}))apSel="ALLE";
+ info.innerHTML="Plan vom <b>"+esc(fmtStand(apData.stand))+"</b> · <b>"+apData.done+" von "+apData.ops.length+"</b> Vorgängen fertig. Arbeitsgang antippen:";
+ var b='<button type="button" class="apb'+(apSel==="ALLE"?' on':'')+'" data-ap="ALLE">Alle<span class="z">'+apData.done+' / '+apData.ops.length+' fertig</span></button>';
+ apData.aps.forEach(function(a){b+='<button type="button" class="apb'+(apSel===a.ap?' on':'')+'" data-ap="'+esc(a.ap)+'">'+esc(a.name||(a.ap==="?"?"ohne Platz":a.ap))+(a.name?'<span class="c">'+esc(a.ap)+'</span>':'')+'<span class="z">'+a.done+' / '+a.ops.length+' fertig</span></button>';});
+ bt.innerHTML=b;var all=apSel==="ALLE",list=all?apData.ops:apData.aps.filter(function(a){return a.ap===apSel;})[0].ops;
+ var d=list.filter(function(o){return o.done;}),op=list.filter(function(o){return !o.done;});
+ $("apTitle").textContent=(all?"Alle Arbeitsplätze":apLabel(apSel))+": "+d.length+" von "+list.length+" fertig";
+ $("apDone").hidden=$("apOpen").hidden=false;$("apDoneT").textContent="✅ Fertig ("+d.length+")";$("apOpenT").textContent="⏳ Offen ("+op.length+")";
+ $("apDoneL").innerHTML=d.map(function(o){return opHtml(o,all);}).join("")||'<div class="op small">Noch nichts fertig.</div>';
+ $("apOpenL").innerHTML=op.map(function(o){return opHtml(o,all);}).join("")||'<div class="op small">Alles fertig 👍</div>';}
+$("apBtns").onclick=function(e){var b=e.target.closest("button");if(!b||!b.dataset.ap)return;apSel=b.dataset.ap;localStorage.setItem("tf_ap",apSel);renderAp();};
+document.querySelectorAll("details.fold").forEach(function(d){d.addEventListener("toggle",function(){var t=d.querySelector(".tg");if(t)t.textContent=d.open?"▾ schließen":"▸ öffnen";});});
+kvGet("botRows").then(function(v){if(v&&v.rows&&!apData)setApRows(v.rows,v.stand);else if(!apData)renderAp();}).catch(function(){renderAp();});
 render();renderMark();
 })();
 </script>
