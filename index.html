@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <script>(function(){var m=location.hash.match(/(?:^#|&)k=([A-Za-z0-9_\-]+)/);if(m){try{localStorage.setItem("tf_plan_key",m[1]);localStorage.removeItem("tf_bot_stand");localStorage.setItem("arbeit_tab","tafel");}catch(e){}history.replaceState(null,"",location.pathname+location.search);}})();</script>
-<meta name="app-version" content="2.4 (26.10.2026)">
+<meta name="app-version" content="2.5 (27.10.2026)">
 <meta http-equiv="Cache-Control" content="no-cache">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#1565c0">
@@ -33,6 +33,10 @@ body{padding-bottom:70px}
 #tafelFrame{position:fixed;top:0;left:0;width:100%;height:calc(100% - 60px - env(safe-area-inset-bottom));border:0;background:#f3f0f7}
 .sel{width:26px;height:26px;vertical-align:middle;margin-right:6px}.orig{background:#f6f6f6;border-radius:8px;padding:8px;margin-top:6px;font-size:15px;color:#444;white-space:pre-wrap}
 #printArea{display:none}
+#saveInfo{background:#e8f5e9;border:3px solid #2e7d32;border-radius:14px;padding:14px;margin-bottom:12px;font-size:19px;line-height:1.4}
+#saveInfo.warn{background:#fff3e0;border-color:#ef6c00}#saveInfo b{font-size:20px}#saveInfo .sub{font-size:15px;color:#444;margin-top:6px}
+.bigbtn{width:100%;min-height:64px;font-size:21px;font-weight:800;border-radius:14px;margin-top:10px;color:#fff}
+.bk{background:#2e7d32}.ld{background:#1565c0}.day{font-size:20px;font-weight:800;color:#1565c0;margin:18px 4px 8px;border-bottom:3px solid #1565c0;padding-bottom:4px}
 @media print{body{background:#fff;padding:0}body>*{display:none!important}#printArea{display:block!important;font-family:Georgia,serif;font-size:16pt;line-height:1.5;color:#000}
 #printArea h1{font-size:24pt;margin:0 0 4pt}#printArea .pdate{font-size:12pt;color:#333;margin-bottom:14pt}#printArea h2{font-size:18pt;border-bottom:1.5pt solid #000;margin:16pt 0 6pt;page-break-after:avoid}
 #printArea li{margin-bottom:10pt;page-break-inside:avoid}#printArea .pp{font-size:12pt;color:#333}@page{margin:18mm}}
@@ -64,9 +68,13 @@ body.hasBar header{top:var(--bh,74px)}body.hasBar #tafelFrame{top:var(--bh,74px)
 <div id="instBar"><button id="inst" type="button">📲 Symbol auf Startbildschirm legen</button></div>
 <div id="instOv" hidden><div class="ovbox"><button id="instX" class="ovx" type="button" aria-label="Schließen">✕</button><div id="instHelp"></div></div></div>
 <div id="tabNotes">
-<header><h1>📝 Arbeitsnotizen <small style="font-size:12px;opacity:.8">v2.4 (26.10.2026)</small></h1></header>
+<header><h1>📝 Arbeitsnotizen <small style="font-size:12px;opacity:.8">v2.5 (27.10.2026)</small></h1></header>
 <div id="upd" hidden style="background:#ffeb3b;padding:12px;text-align:center;font-weight:700;cursor:pointer">🔄 Neue Version verfügbar – hier tippen zum Aktualisieren</div>
 <main>
+<div id="saveInfo"><div id="saveMain">💾 Notizen werden geladen…</div><div class="sub" id="saveSub"></div>
+<button class="bigbtn bk" id="bkBtn" type="button">💾 Notizen sichern</button>
+<button class="bigbtn ld" id="ldBtn" type="button">📂 Sicherung laden</button>
+<input type="file" id="ldFile" accept=".json,.csv,.txt,application/json,text/csv,text/plain" hidden></div>
 <section class="card">
 <textarea id="text" placeholder="Notiz eingeben… z. B. „Mitarbeiter braucht Schulung für die Anlage“"></textarea>
 <button class="mic big" id="mic" type="button" title="Diktieren">🎤 Diktieren</button>
@@ -101,8 +109,36 @@ body.hasBar header{top:var(--bh,74px)}body.hasBar #tafelFrame{top:var(--bh,74px)
 var CATS=["Schulung","Anlage","Mitarbeiter","Aufgabe","Sonstiges"],KEY="arbeitsnotizen_v1";
 var $=function(id){return document.getElementById(id);};
 var notes=[];try{notes=JSON.parse(localStorage.getItem(KEY))||[];}catch(e){notes=[];}
-var selCats=[];
-function persist(){localStorage.setItem(KEY,JSON.stringify(notes));}
+if(!Array.isArray(notes))notes=[];
+// v2.5: Notizen werden NIE automatisch gelöscht. Doppelt gespeichert: localStorage + IndexedDB (Spiegel + Tages-Sicherung).
+var selCats=[],LS_SAVED="arbeitsnotizen_saved",LS_BK="arbeitsnotizen_lastbackup",idbP=null;
+function sig(n){return (n.ts||0)+"|"+String(n.text||"").trim();}
+function normNote(n){if(!n||typeof n!=="object"||!String(n.text||"").trim())return null;return{id:String(n.id||((n.ts||Date.now())+""+Math.random().toString(36).slice(2,6))),text:String(n.text),person:String(n.person||""),cats:Array.isArray(n.cats)?n.cats.map(String):[],ts:+n.ts||Date.now(),done:!!n.done,orig:n.orig?String(n.orig):undefined};}
+function mergeNotes(list){var ids={},sg={},added=0;notes.forEach(function(n){ids[n.id]=1;sg[sig(n)]=1;});
+ (list||[]).forEach(function(x){var n=normNote(x);if(!n||ids[n.id]||sg[sig(n)])return;ids[n.id]=1;sg[sig(n)]=1;notes.push(n);added++;});
+ if(added)notes.sort(function(a,b){return b.ts-a.ts;});return added;}
+// alte/andere Speicher-Schlüssel übernehmen (Migration)
+try{for(var i=0;i<localStorage.length;i++){var k=localStorage.key(i);if(k&&k!==KEY&&/notiz/i.test(k)&&k!==LS_SAVED&&k!==LS_BK){try{var v=JSON.parse(localStorage.getItem(k));if(Array.isArray(v))mergeNotes(v);}catch(e){}}}}catch(e){}
+function idb(){if(idbP)return idbP;idbP=new Promise(function(res,rej){if(!window.indexedDB){rej(new Error("no idb"));return;}var r=indexedDB.open("arbeitsnotizen_db",1);
+ r.onupgradeneeded=function(){r.result.createObjectStore("kv");};r.onsuccess=function(){res(r.result);};r.onerror=function(){rej(r.error);};});return idbP;}
+function idbGet(k){return idb().then(function(db){return new Promise(function(res){var q=db.transaction("kv").objectStore("kv").get(k);q.onsuccess=function(){res(q.result);};q.onerror=function(){res(null);};});});}
+function idbPut(k,v){return idb().then(function(db){return new Promise(function(res){var t=db.transaction("kv","readwrite");t.objectStore("kv").put(v,k);t.oncomplete=function(){res(true);};t.onerror=function(){res(false);};});});}
+function dayKey(ts){var d=new Date(ts);return d.getFullYear()+"-"+("0"+(d.getMonth()+1)).slice(-2)+"-"+("0"+d.getDate()).slice(-2);}
+function persist(){var j=JSON.stringify(notes),ok=true;try{localStorage.setItem(KEY,j);localStorage.setItem(LS_SAVED,Date.now()+"");}catch(e){ok=false;}
+ idbPut("notes",notes.map(function(n){var c={};for(var k in n)if(k!=="sel"&&k!=="showOrig")c[k]=n[k];return c;})).catch(function(){});
+ if(notes.length)idbPut("tag_"+dayKey(Date.now()),{ts:Date.now(),notes:JSON.parse(j)}).catch(function(){});
+ if(!ok)alert("⚠️ Speichern fehlgeschlagen (Speicher voll?). Bitte sofort „💾 Notizen sichern“ drücken.");
+ updInfo();}
+var standalone0=window.matchMedia("(display-mode: standalone)").matches||window.navigator.standalone===true;
+var persisted=null;
+if(navigator.storage&&navigator.storage.persist){navigator.storage.persisted().then(function(p){if(p){persisted=true;updInfo();return;}return navigator.storage.persist().then(function(g){persisted=!!g;updInfo();});}).catch(function(){});}
+function updInfo(){var el=document.getElementById("saveMain");if(!el)return;var t=+localStorage.getItem(LS_SAVED)||0,b=+localStorage.getItem(LS_BK)||0;
+ var dev=/iphone/i.test(navigator.userAgent)?"diesem iPhone":/ipad/i.test(navigator.userAgent)?"diesem iPad":"diesem Gerät";
+ el.innerHTML="💾 <b>Gespeichert auf "+dev+"</b> – zuletzt gespeichert: <b>"+(t?fmt(t):"noch nie")+"</b><br>📝 "+notes.length+" Notiz"+(notes.length===1?"":"en")+" an "+Object.keys(notes.reduce(function(a,n){a[dayKey(n.ts)]=1;return a;},{})).length+" Tag(en)";
+ var old=!b||Date.now()-b>864e5;
+ document.getElementById("saveSub").innerHTML="📍 Speicherort: <b>"+(standalone0?"App-Symbol auf dem Startbildschirm":"Safari/Browser")+"</b> – Safari und App-Symbol haben <b>getrennte</b> Speicher."+
+  (persisted===true?" 🔒 Dauerhaft gespeichert.":"")+"<br>🗂 Letzte Sicherung als Datei: <b>"+(b?fmt(b):"noch nie")+"</b>"+(old&&notes.length?" – <b style='color:#c62828'>bitte jetzt sichern!</b>":"");
+ document.getElementById("saveInfo").classList.toggle("warn",old&&notes.length>0);}
 function fmt(ts){return new Date(ts).toLocaleString("de-DE",{dateStyle:"short",timeStyle:"short"});}
 function esc(s){return String(s).replace(/[&<>"']/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c];});}
 // chips
@@ -116,9 +152,13 @@ persist();$("corr").hidden=true;$("text").value="";$("person").value="";selCats=
 function filtered(){var q=$("search").value.toLowerCase(),fc=$("fcat").value,fs=$("fstat").value;
 return notes.filter(function(n){if(fc&&n.cats.indexOf(fc)<0)return false;if(fs==="offen"&&n.done)return false;if(fs==="erledigt"&&!n.done)return false;
 return !q||(n.text+" "+n.person+" "+n.cats.join(" ")).toLowerCase().indexOf(q)>=0;});}
-function render(){var l=filtered(),h="";
+function dayTitle(ts){var d=new Date(ts),t=dayKey(Date.now()),y=dayKey(Date.now()-864e5),k=dayKey(ts);
+ return (k===t?"Heute, ":k===y?"Gestern, ":"")+d.toLocaleDateString("de-DE",{weekday:"long",day:"2-digit",month:"2-digit",year:"numeric"});}
+function render(){var l=filtered().slice().sort(function(a,b){return b.ts-a.ts;}),h="",lastDay="";
 if(!l.length)h='<div class="empty">Keine Notizen.</div>';
-l.forEach(function(n){h+='<div class="card note'+(n.done?' done':'')+'"><div class="meta"><input type="checkbox" class="sel" data-id="'+n.id+'"'+(n.sel?' checked':'')+' aria-label="Auswählen">🕒 '+fmt(n.ts)+(n.person?' · 👤 '+esc(n.person):'')+'</div>'+
+var cnt={};l.forEach(function(n){var k=dayKey(n.ts);cnt[k]=(cnt[k]||0)+1;});
+l.forEach(function(n){var dk=dayKey(n.ts);if(dk!==lastDay){lastDay=dk;h+='<div class="day">📅 '+dayTitle(n.ts)+' – '+cnt[dk]+' Notiz'+(cnt[dk]===1?'':'en')+'</div>';}
+h+='<div class="card note'+(n.done?' done':'')+'"><div class="meta"><input type="checkbox" class="sel" data-id="'+n.id+'"'+(n.sel?' checked':'')+' aria-label="Auswählen">🕒 '+fmt(n.ts)+(n.person?' · 👤 '+esc(n.person):'')+'</div>'+
 (n.cats.length?'<div class="meta">'+n.cats.map(function(c){return '<span class="tag">'+esc(c)+'</span>';}).join("")+'</div>':'')+
 '<div class="t">'+esc(n.text)+'</div>'+(n.orig&&n.showOrig?'<div class="orig">Original: '+esc(n.orig)+'</div>':'')+
 '<div class="row"><button class="small" data-a="rw" data-id="'+n.id+'">✍️ Umformulieren</button><button class="small" data-a="sp" data-id="'+n.id+'">🔊 Vorlesen</button></div>'+
@@ -179,7 +219,28 @@ if(fin)base=(base?base+" ":"")+fin.trim();$("text").value=base+(tmp?" "+tmp:"");
 rec.onerror=function(e){$("status").textContent=e.error==="not-allowed"?"Mikrofonzugriff verweigert.":"Fehler bei Spracheingabe: "+e.error;};
 rec.onend=function(){var was=on;on=false;$("mic").textContent="🎤 Diktieren";if(was)setTimeout(correct,300);$("mic").classList.remove("on");$("mic").textContent="🎤 Diktieren";};
 $("mic").onclick=function(){if(on){rec.stop();return;}base=$("text").value.trim();$("status").textContent="";try{rec.start();on=true;$("mic").classList.add("on");$("mic").textContent="⏹ Stopp";}catch(e){$("status").textContent="Spracheingabe konnte nicht gestartet werden.";}};}
-render();
+// ---- v2.5 Sichern / Laden ----
+function backupJson(){return JSON.stringify({app:"Arbeitsapp-Notizen",version:2,exportiert:new Date().toISOString(),anzahl:notes.length,notes:notes.map(normNote).filter(Boolean)},null,1);}
+$("bkBtn").onclick=function(){if(!notes.length){alert("Noch keine Notizen zum Sichern.");return;}
+ var name="Notizen_"+dayKey(Date.now())+"_"+new Date().toTimeString().slice(0,5).replace(":","-")+".json",blob=new Blob([backupJson()],{type:"application/json"});
+ var mark=function(){localStorage.setItem(LS_BK,Date.now()+"");updInfo();};
+ var f=null;try{f=new File([blob],name,{type:"application/json"});}catch(e){}
+ if(f&&navigator.canShare&&navigator.canShare({files:[f]})){navigator.share({files:[f],title:"Notizen-Sicherung",text:notes.length+" Notizen – Sicherung "+fmt(Date.now())}).then(mark).catch(function(e){if(e&&e.name!=="AbortError")dl();});}
+ else dl();
+ function dl(){var a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();a.remove();mark();
+  alert("✅ Sicherung gespeichert: "+name+"\nTipp: In „Dateien“ → iCloud Drive ablegen.");}};
+$("ldBtn").onclick=function(){$("ldFile").value="";$("ldFile").click();};
+function parseCsv(t){var rows=[],r=[],f="",q=false;for(var i=0;i<t.length;i++){var c=t[i];if(q){if(c==='"'){if(t[i+1]==='"'){f+='"';i++;}else q=false;}else f+=c;}
+ else if(c==='"')q=true;else if(c===";"){r.push(f);f="";}else if(c==="\n"){r.push(f);rows.push(r);r=[];f="";}else if(c!=="\r")f+=c;}if(f||r.length){r.push(f);rows.push(r);}return rows;}
+function deDate(s){var m=String(s).match(/(\d{1,2})\.(\d{1,2})\.(\d{2,4})(?:,?\s*(\d{1,2}):(\d{2}))?/);if(!m)return Date.now();var y=+m[3];if(y<100)y+=2000;return new Date(y,m[2]-1,m[1],+m[4]||0,+m[5]||0).getTime();}
+$("ldFile").onchange=function(){var file=this.files&&this.files[0];if(!file)return;var rd=new FileReader();rd.onload=function(){var t=String(rd.result).replace(/^\ufeff/,""),list=[];
+ try{var j=JSON.parse(t);list=Array.isArray(j)?j:(j.notes||[]);}catch(e){var rows=parseCsv(t);if(rows.length&&/datum/i.test(rows[0][0]||""))rows.shift();
+  list=rows.filter(function(r){return r.length>=4&&r[3];}).map(function(r){return{ts:deDate(r[0]),person:r[1],cats:r[2]?r[2].split(/,\s*/):[],text:r[3],done:/erledigt/i.test(r[4]||"")};});}
+ var added=mergeNotes(list);if(added)persist();render();alert(added?"✅ "+added+" Notiz(en) aus der Sicherung übernommen. Vorhandene bleiben erhalten, doppelte wurden übersprungen.":"ℹ️ Keine neuen Notizen – alle sind schon vorhanden ("+list.length+" in der Datei).");};
+ rd.readAsText(file);};
+// IndexedDB-Spiegel zurückholen, falls localStorage leer/fehlt
+idbGet("notes").then(function(l){var added=mergeNotes(l||[]);if(added){persist();render();}else if(notes.length)idbPut("notes",notes).catch(function(){});updInfo();}).catch(function(){});
+render();updInfo();
 
 // ---- Schulung: umformulieren, vorlesen, drucken ----
 var SYS_TRAIN=SYS;
@@ -210,7 +271,7 @@ window.__buildPrint=buildPrint;
 // Version / Update
 var APPV=document.querySelector('meta[name="app-version"]').content;
 $("upd").onclick=function(){location.replace(location.pathname+"?v="+Date.now()+location.hash);};
-if("serviceWorker" in navigator)navigator.serviceWorker.register("sw.js?v=2.4",{scope:"./",updateViaCache:"none"}).then(function(r){r.update().catch(function(){});}).catch(function(){});
+if("serviceWorker" in navigator)navigator.serviceWorker.register("sw.js?v=2.5",{scope:"./",updateViaCache:"none"}).then(function(r){r.update().catch(function(){});}).catch(function(){});
 // Installieren
 var deferredPrompt=null;window.addEventListener("beforeinstallprompt",function(e){e.preventDefault();deferredPrompt=e;});
 var standalone=window.matchMedia("(display-mode: standalone)").matches||window.navigator.standalone===true;

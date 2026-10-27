@@ -8,7 +8,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <title>Tafel-Finder</title>
 <script>(function(){var m=location.hash.match(/(?:^#|&)k=([A-Za-z0-9_\-]+)/);if(m){try{localStorage.setItem("tf_plan_key",m[1]);localStorage.removeItem("tf_bot_stand");localStorage.setItem("arbeit_tab","tafel");}catch(e){}history.replaceState(null,"",location.pathname+location.search);}})();</script>
-<meta name="app-version" content="2.4 (26.10.2026)">
+<meta name="app-version" content="2.5 (27.10.2026)">
 <meta name="description" content="Excel-Plan und Tafel fotografieren – erledigte Aufträge (Gutmenge = VorgMenge) werden violett markiert">
 <meta name="apple-mobile-web-app-title" content="Tafel-Finder">
 <style>
@@ -45,7 +45,7 @@ canvas{width:100%;height:auto;border-radius:10px;margin-top:8px;touch-action:pin
 </script>
 </head>
 <body>
-<header><h1>🔍 Tafel-Finder <small style="font-size:13px;opacity:.9;font-weight:600;background:#ffffff33;padding:2px 8px;border-radius:8px">Version 2.4</small></h1></header>
+<header><h1>🔍 Tafel-Finder <small style="font-size:13px;opacity:.9;font-weight:600;background:#ffffff33;padding:2px 8px;border-radius:8px">Version 2.5</small></h1></header>
 <main>
 <details class="card" id="help" open><summary style="font-weight:700;font-size:18px;cursor:pointer">ℹ️ So geht’s</summary>
 <ol style="margin:8px 0 0;padding-left:22px;line-height:1.5">
@@ -55,7 +55,7 @@ canvas{width:100%;height:auto;border-radius:10px;margin-top:8px;touch-action:pin
 <li>Tafel fotografieren (gerade, scharf, ohne Spiegelung – gern in 2 Hälften) und „Karten markieren“ tippen.</li>
 <li>Gefundene Karten sind violett eingekreist: durchgezogen = sicher, gestrichelt mit „?“ = bitte prüfen.</li>
 </ol>
-<p class="small" style="margin:8px 0 0">Alle Fotos und Ergebnisse bleiben nur auf deinem Handy. Tipp: Über das Browser-Menü „Zum Startbildschirm hinzufügen“. · Version 2.4</p></details>
+<p class="small" style="margin:8px 0 0">Alle Fotos und Ergebnisse bleiben nur auf deinem Handy. Tipp: Über das Browser-Menü „Zum Startbildschirm hinzufügen“. · Version 2.5</p></details>
 <section class="card" id="botCard" style="border:2px solid #6a1b9a">
 <h2>🤖 Plan vom Bot <span id="pairOk" class="ok" hidden>· Gekoppelt ✓</span></h2>
 <div id="botInfo" class="prog" style="font-size:16px;color:#1a1a1a">⏳ Plan wird geladen …</div>
