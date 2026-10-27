@@ -8,7 +8,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <title>Tafel-Finder</title>
 <script>(function(){var m=location.hash.match(/(?:^#|&)k=([A-Za-z0-9_\-]+)/);if(m){try{localStorage.setItem("tf_plan_key",m[1]);localStorage.removeItem("tf_bot_stand");localStorage.setItem("arbeit_tab","tafel");}catch(e){}history.replaceState(null,"",location.pathname+location.search);}})();</script>
-<meta name="app-version" content="2.6 (27.10.2026)">
+<meta name="app-version" content="2.7 (27.10.2026)">
 <meta name="description" content="Excel-Plan und Tafel fotografieren – erledigte Aufträge (Gutmenge = VorgMenge) werden violett markiert">
 <meta name="apple-mobile-web-app-title" content="Tafel-Finder">
 <style>
@@ -28,6 +28,11 @@ canvas{width:100%;height:auto;border-radius:10px;margin-top:8px;touch-action:pin
 .big{min-height:66px!important;font-size:20px!important;font-weight:700}.clr{background:#fde7e9;color:#b71c1c}.r{color:#ef6c00;font-weight:700}.q{color:#8d6e63;font-weight:700}
 .imp{margin-top:12px;border:2px dashed #c9b6dc;border-radius:12px;padding:10px}.imp summary{cursor:pointer;font-size:17px}.imp textarea{width:100%;font-size:15px;padding:10px;border:1px solid #ccd;border-radius:10px;margin-top:8px;font-family:monospace}.imp input[type=checkbox]{width:24px;height:24px}.small2{min-height:40px;font-size:15px}
 .snap{margin-top:8px;border:2px solid #c9b6dc;border-radius:12px;padding:10px;background:#faf7fd}.snap .it{border-bottom:1px solid #e6dcef;padding:8px 0}.snap .it b{font-size:17px}.snap button{min-height:42px;font-size:15px;margin:4px 4px 0 0}.snap input{font-size:16px;padding:8px;border:1px solid #ccd;border-radius:8px}
+.drop{display:flex!important;flex-direction:column;align-items:center;justify-content:center;text-align:center;width:100%;min-height:110px;margin-top:10px;padding:14px;border:4px dashed #8e24aa;border-radius:16px;background:#faf5fd;color:#4a148c;font-size:21px;font-weight:800;cursor:pointer;transition:background .15s,border-color .15s}
+.drop .small{font-weight:400;font-size:14px;margin-top:4px}.drop.over{background:#e1bee7;border-color:#4a148c;border-style:solid;transform:scale(1.01)}.drop.sm{min-height:80px;font-size:18px}
+#dropOv{position:fixed;inset:0;z-index:90;background:#6a1b9acc;color:#fff;display:flex;align-items:center;justify-content:center;flex-direction:column;font-size:30px;font-weight:800;text-align:center;pointer-events:none;border:8px dashed #fff}
+#dropOv .small{color:#fff;font-size:18px;font-weight:400;margin-top:8px}
+#dropMsg{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);z-index:95;max-width:92%;background:#1a1a1a;color:#fff;padding:12px 18px;border-radius:12px;font-size:17px;box-shadow:0 3px 10px #0006}
 </style>
 <script>
 // ---- Selbst-Aktualisierung (v2.3): neue Version erkennen und einmal automatisch neu laden ----
@@ -45,7 +50,7 @@ canvas{width:100%;height:auto;border-radius:10px;margin-top:8px;touch-action:pin
 </script>
 </head>
 <body>
-<header><h1>🔍 Tafel-Finder <small style="font-size:13px;opacity:.9;font-weight:600;background:#ffffff33;padding:2px 8px;border-radius:8px">Version 2.6</small></h1></header>
+<header><h1>🔍 Tafel-Finder <small style="font-size:13px;opacity:.9;font-weight:600;background:#ffffff33;padding:2px 8px;border-radius:8px">Version 2.7</small></h1></header>
 <main>
 <section class="card" id="markCard" style="border:3px solid #8e24aa;background:#f6effb">
 <div id="markInfo" style="font-size:21px;font-weight:800;color:#4a148c;line-height:1.35">⏳ …</div>
@@ -61,7 +66,7 @@ canvas{width:100%;height:auto;border-radius:10px;margin-top:8px;touch-action:pin
 <li>Tafel fotografieren (gerade, scharf, ohne Spiegelung – gern in 2 Hälften) und „Karten markieren“ tippen.</li>
 <li>Gefundene Karten sind violett eingekreist: durchgezogen = sicher, gestrichelt mit „?“ = bitte prüfen.</li>
 </ol>
-<p class="small" style="margin:8px 0 0">Alle Fotos und Ergebnisse bleiben nur auf deinem Handy. Tipp: Über das Browser-Menü „Zum Startbildschirm hinzufügen“. · Version 2.6</p></details>
+<p class="small" style="margin:8px 0 0">Alle Fotos und Ergebnisse bleiben nur auf deinem Handy. Tipp: Über das Browser-Menü „Zum Startbildschirm hinzufügen“. · Version 2.7</p></details>
 <section class="card" id="botCard" style="border:2px solid #6a1b9a">
 <h2>🤖 Plan vom Bot <span id="pairOk" class="ok" hidden>· Gekoppelt ✓</span></h2>
 <div id="botInfo" class="prog" style="font-size:16px;color:#1a1a1a">⏳ Plan wird geladen …</div>
@@ -81,11 +86,13 @@ canvas{width:100%;height:auto;border-radius:10px;margin-top:8px;touch-action:pin
 <h2>1. Excel-Plan fotografieren <span class="small">(nur nötig, wenn kein Plan vom Bot da ist)</span></h2>
 <div class="row"><label class="file">📷 Kamera<input type="file" id="fxc" accept="image/*" capture="environment"></label>
 <label class="file">🖼 Galerie<input type="file" id="fxg" accept="image/*" multiple></label></div>
+<label class="drop sm" id="dzX" for="fxg"><span class="dzT">🖱 Excel-Fotos hierher ziehen und ablegen</span><span class="small dzS">oder hier klicken zum Auswählen</span></label>
 <div class="thumbs" id="tx"></div>
 <div class="row"><button class="primary" id="bx">Erledigte Aufträge suchen</button></div><div class="prog" id="px"></div>
 <details id="exRead" class="imp" hidden><summary id="exReadSum"></summary><div style="max-height:360px;overflow:auto;margin-top:6px"><table><thead><tr><th>Erl.</th><th>Material</th><th>Auftrag</th><th>Vorgang · Vorg/Gut</th></tr></thead><tbody id="exReadRows"></tbody></table></div><div class="small">Bitte mit dem Foto vergleichen – die Texterkennung kann sich bei einzelnen Zahlen irren. „?“ = nicht lesbar.</div></details>
 <details class="imp" id="impBox"><summary><b>📄 Excel importieren</b> <span class="small">(Reserve – Datei oder Einfügen)</span></summary>
 <div class="row"><label class="file">📂 Datei wählen (.xlsx, .xls, .csv, .txt)<input type="file" id="impFile" accept=".xlsx,.xls,.xlsm,.csv,.txt,.tsv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,text/csv,text/plain"></label></div>
+<label class="drop sm" id="dzI" for="impFile"><span class="dzT">🖱 Excel-Datei hierher ziehen und ablegen</span><span class="small dzS">.xlsx, .xls, .csv – oder hier klicken zum Auswählen</span></label>
 <textarea id="impText" rows="5" placeholder="Aus Excel kopieren & einfügen: Zeilen inkl. Kopfzeile markieren (Material, Auftrag, Vorgang, VorgMenge, Gutmenge) → Kopieren → hier lange drücken → Einfügen"></textarea>
 <div class="row"><button id="impParse" type="button">📋 Eingefügten Text lesen</button></div>
 <div class="prog" id="impInfo"></div>
@@ -116,10 +123,13 @@ canvas{width:100%;height:auto;border-radius:10px;margin-top:8px;touch-action:pin
 <h2>2. Tafel fotografieren</h2>
 <div class="row"><label class="file">📷 Kamera<input type="file" id="fbc" accept="image/*" capture="environment"></label>
 <label class="file">🖼 Galerie<input type="file" id="fbg" accept="image/*" multiple></label></div>
+<label class="drop" id="dzB" for="fbg"><span class="dzT">🖱 Bilder hierher ziehen und ablegen</span><span class="small dzS">oder hier klicken zum Auswählen · mehrere Bilder auf einmal · Strg+V fügt ein Bild ein</span></label>
 <div class="thumbs" id="tb"></div>
 <div class="small" style="margin-top:4px">🗓 Hier: Fotos von heute. Fotos werden nach 3 Tagen automatisch gelöscht (gespeicherte Tafeln bleiben).</div>
 <details id="arch" class="imp" hidden><summary><b>🗂 Archiv (3 Tage)</b> <span class="small" id="archN"></span></summary><div id="archList"></div>
 <div class="small" style="margin-top:6px">Fotos von den letzten Tagen. „In Tafel übernehmen“ = wieder oben einfügen und markieren. Nach 3 Tagen werden sie automatisch gelöscht.</div></details>
+<div id="dropOv" hidden>📥 Loslassen zum Hinzufügen<div class="small" id="dropOvSub">Bilder → Tafel-Fotos · Excel-Datei → Excel-Import</div></div>
+<div id="dropMsg" hidden></div>
 <div id="viewer" hidden style="position:fixed;inset:0;background:#000d;z-index:50;display:flex;align-items:center;justify-content:center" title="Schließen"><img id="viewImg" style="max-width:100%;max-height:100%"></div>
 <div class="row"><button class="primary big" id="bb">🔍 Karten markieren</button></div>
 <div class="row"><button class="big clr" id="mclear2" type="button">🧹 Markierungen löschen</button></div>
@@ -210,7 +220,9 @@ function renderArchive(){var el=$("archList");el.innerHTML="";var g={},order=[];
 function thumbs(arr,el,onDel){el.innerHTML="";arr.forEach(function(f,i){var d=document.createElement("div");d.className="th";var im=document.createElement("img");
  if(!f._u)f._u=URL.createObjectURL(f);im.src=f._u;im.onclick=function(){$("viewImg").src=f._u;$("viewer").hidden=false;};var b=document.createElement("button");b.textContent="✕";b.title="Entfernen";
  b.onclick=function(){if(!confirm("Dieses Foto wirklich entfernen?"))return;URL.revokeObjectURL(f._u);arr.splice(i,1);delPhoto(f._id);delCards(f._id);if(onDel)onDel(f);thumbs(arr,el,onDel);};var sb=document.createElement("button");sb.className="sh";sb.textContent="📤";sb.title="Teilen";sb.onclick=function(){shareFiles([asFile(f,(arr===exFiles?"excel_":"tafel_")+(i+1))],"","Foto "+(i+1));};var n=document.createElement("span");n.textContent=i+1;d.appendChild(im);d.appendChild(sb);d.appendChild(n);d.appendChild(b);el.appendChild(d);});}
-function adder(inp,arr,el){$(inp).onchange=function(){var kind=arr===exFiles?"ex":"bd";Array.from(this.files).forEach(function(f){arr.push(f);savePhoto(kind,f).catch(function(e){alert("Foto konnte nicht gespeichert werden: "+e.message);});});this.value="";thumbs(arr,el);if(kind==="bd")scheduleAuto();};}
+// v2.7: gemeinsamer Weg für Kamera, Galerie, Drag & Drop und Einfügen (Strg+V)
+function addFiles(files,arr,el){var kind=arr===exFiles?"ex":"bd";files.forEach(function(f){arr.push(f);savePhoto(kind,f).catch(function(e){alert("Foto konnte nicht gespeichert werden: "+e.message);});});thumbs(arr,el);if(kind==="bd"&&files.length)scheduleAuto();}
+function adder(inp,arr,el){$(inp).onchange=function(){var fs=Array.from(this.files);this.value="";addFiles(fs,arr,el);};}
 adder("fxc",exFiles,$("tx"));adder("fxg",exFiles,$("tx"));adder("fbc",bdFiles,$("tb"));adder("fbg",bdFiles,$("tb"));
 // Bild laden + verkleinern (spart Speicher)
 function loadScaled(file,maxDim){return loadImg(file).then(function(im){var W=im.naturalWidth,H=im.naturalHeight,s=Math.min(1,maxDim/Math.max(W,H));
@@ -415,10 +427,11 @@ function readXlsx(buf,name){if(typeof XLSX==="undefined"){$("impInfo").textConte
  wb.SheetNames.forEach(function(n){var ws=wb.Sheets[n];if(!ws["!ref"])return;var grid=XLSX.utils.sheet_to_json(ws,{header:1,raw:false,defval:"",blankrows:true});
   var res=TafelCore.parseTable(grid);var sc=res.rows.length+(res.hasQty?1000:0);if(!best||sc>best.sc)best={res:res,n:n,sc:sc};});
  if(best)setImp(best.res,name+" / Blatt „"+best.n+"“");else setImp({rows:[]},name);}
-$("impFile").onchange=function(){var f=this.files[0];if(!f)return;this.value="";$("impInfo").textContent="⏳ "+f.name+" wird gelesen …";
+function readImpFile(f){if(!f)return;$("impInfo").textContent="⏳ "+f.name+" wird gelesen …";
  savePhoto("imp",f).catch(function(){});
  var rd=new FileReader();if(/\.(csv|txt|tsv)$/i.test(f.name)||/^text\//.test(f.type)){rd.onload=function(){setImp(TafelCore.parseText(rd.result),f.name);};rd.readAsText(f);}
  else{rd.onload=function(){try{readXlsx(new Uint8Array(rd.result),f.name);}catch(e){$("impInfo").textContent="Fehler beim Lesen: "+e.message;}};rd.readAsArrayBuffer(f);}};
+$("impFile").onchange=function(){var f=this.files[0];this.value="";readImpFile(f);};
 $("impParse").onclick=function(){var t=$("impText").value;if(!t.trim()){alert("Bitte zuerst Zeilen aus Excel einfügen.");return;}kvSet("impText",t);setImp(TafelCore.parseText(t),"eingefügt");};
 $("impApply").onclick=function(){if(!imp.length)return;var ord=[],map={};
  imp.forEach(function(r){var f=r.auftrag||r.fauf||"",m=r.material||r.wkz||"",key=f||("M"+m);if(!f&&!m)return;var o=map[key];if(!o){o=map[key]={fauf:f,wkz:m,done:false,vorgang:"",vorg:null,gut:null};ord.push(o);}
@@ -463,6 +476,48 @@ $("shareAll").onclick=function(){var fs=[];exFiles.forEach(function(f,i){fs.push
  markedOuts.forEach(function(o,i){fs.push(asFile(o.blob,"tafel_"+(i+1)+"_markiert"));});var t=listText();
  if(!fs.length&&!items.length&&!(window.__raus||[]).length){alert("Noch nichts zum Teilen.");return;}
  fs.push(new File([t],"tafel_ergebnis.txt",{type:"text/plain"}));$("ps").textContent="📤 "+fs.length+" Datei(en) werden geteilt …";shareFiles(fs,t,"Tafel-Finder");};
+// ---- v2.7: Drag & Drop (PC) + Einfügen aus Zwischenablage ----
+var IMG_RE=/\.(jpe?g|png|webp|gif|bmp|heic|heif|avif)$/i,XL_RE=/\.(xlsx|xlsm|xls|csv|tsv|txt)$/i,HEIC_RE=/\.(heic|heif)$/i;
+function isImg(f){return /^image\//.test(f.type||"")||IMG_RE.test(f.name||"");}
+function isXl(f){return !isImg(f)&&(XL_RE.test(f.name||"")||/spreadsheet|ms-excel|text\/csv/.test(f.type||""));}
+function isHeic(f){return /hei[cf]/i.test(f.type||"")||HEIC_RE.test(f.name||"");}
+var msgT=null;function dropMsg(t,ms){var m=$("dropMsg");m.textContent=t;m.hidden=false;if(msgT)clearTimeout(msgT);msgT=setTimeout(function(){m.hidden=true;},ms||5000);}
+var heicP=null;function heicLib(){if(window.heic2any)return Promise.resolve(window.heic2any);if(heicP)return heicP;heicP=new Promise(function(res,rej){var sc=document.createElement("script");sc.src="https://cdn.jsdelivr.net/npm/heic2any@0.0.4/dist/heic2any.min.js";sc.onload=function(){window.heic2any?res(window.heic2any):rej(new Error("HEIC-Leser fehlt"));};sc.onerror=function(){heicP=null;rej(new Error("HEIC-Leser nicht geladen (Internet?)"));};document.head.appendChild(sc);});return heicP;}
+function canShow(f){return new Promise(function(res){var u=URL.createObjectURL(f),im=new Image();im.onload=function(){URL.revokeObjectURL(u);res(true);};im.onerror=function(){URL.revokeObjectURL(u);res(false);};im.src=u;});}
+async function fixImg(f){if(!isHeic(f))return f;if(await canShow(f))return f; // Safari kann HEIC selbst
+ var lib=await heicLib(),out=await lib({blob:f,toType:"image/jpeg",quality:0.9});if(Array.isArray(out))out=out[0];return new File([out],(f.name||"foto").replace(/\.\w+$/,"")+".jpg",{type:"image/jpeg",lastModified:f.lastModified||Date.now()});}
+async function takeImages(fs,target){var ok=[],bad=[];for(var i=0;i<fs.length;i++){try{ok.push(await fixImg(fs[i]));}catch(e){bad.push(fs[i].name+" ("+e.message+")");}}
+ var ex=target==="ex",arr=ex?exFiles:bdFiles,el=$(ex?"tx":"tb");if(ok.length)addFiles(ok,arr,el);
+ return {n:ok.length,bad:bad,where:ex?"Excel-Fotos":"Tafel-Fotos von heute"};}
+// target: "bd" (Tafel), "ex" (Excel-Foto), "imp" (Excel-Import) oder "auto"
+async function handleFiles(list,target){var fs=Array.from(list||[]);if(!fs.length)return;
+ var imgs=fs.filter(isImg),xls=fs.filter(isXl),other=fs.filter(function(f){return !isImg(f)&&!isXl(f);}),msg=[];
+ if(target==="imp"&&!xls.length&&imgs.length)target="bd";
+ if(imgs.length){if(target==="imp")target="bd";var r=await takeImages(imgs,target==="ex"?"ex":"bd");
+  if(r.n)msg.push("✅ "+r.n+" Bild(er) als "+r.where+" hinzugefügt"+(r.where.indexOf("Tafel")===0?" – die App markiert gleich automatisch.":"."));
+  if(r.bad.length)msg.push("⚠️ Nicht lesbar: "+r.bad.join(", ")+" – bitte als JPG speichern.");
+  if(r.n){$(target==="ex"?"tx":"tb").scrollIntoView({behavior:"smooth",block:"center"});if(target!=="ex")$("pb").textContent="📥 "+r.n+" Bild(er) abgelegt. Die App markiert gleich automatisch mit dem aktuellen Plan.";}}
+ if(xls.length){$("impBox").open=true;readImpFile(xls[0]);msg.push("📄 Excel-Datei „"+xls[0].name+"“ wird gelesen …"+(xls.length>1?" (nur die erste von "+xls.length+")":""));$("impBox").scrollIntoView({behavior:"smooth",block:"start"});}
+ if(other.length)msg.push("⚠️ Ignoriert (kein Bild / keine Excel-Datei): "+other.map(function(f){return f.name;}).join(", "));
+ if(msg.length)dropMsg(msg.join("\n"),other.length?8000:5000);}
+window.__tfDrop=function(files){return handleFiles(files,"auto");};
+function hasFiles(e){var t=e.dataTransfer&&e.dataTransfer.types;return !!t&&Array.prototype.indexOf.call(t,"Files")>=0;}
+var ovT=null,curZone=null;function zoneOf(n){while(n&&n.nodeType===1){if(n.id==="dzX")return "ex";if(n.id==="dzI"||n.id==="impBox")return "imp";if(n.id==="dzB")return "bd";n=n.parentNode;}return "auto";}
+function hideOv(){$("dropOv").hidden=true;document.querySelectorAll(".drop.over").forEach(function(d){d.classList.remove("over");});}
+document.addEventListener("dragover",function(e){if(!hasFiles(e))return;e.preventDefault();e.dataTransfer.dropEffect="copy";$("dropOv").hidden=false;
+ var z=zoneOf(e.target);$("dropOvSub").textContent=z==="ex"?"→ als Excel-Foto":z==="imp"?"→ Excel-Import":"Bilder → Tafel-Fotos · Excel-Datei → Excel-Import";
+ document.querySelectorAll(".drop").forEach(function(d){d.classList.toggle("over",d.contains(e.target));});
+ if(ovT)clearTimeout(ovT);ovT=setTimeout(hideOv,250);});
+document.addEventListener("dragleave",function(e){if(!e.relatedTarget){if(ovT)clearTimeout(ovT);ovT=setTimeout(hideOv,80);}});
+document.addEventListener("drop",function(e){if(!hasFiles(e))return;e.preventDefault();hideOv();handleFiles(e.dataTransfer.files,zoneOf(e.target));});
+// Strg+V: Bild aus der Zwischenablage → Tafel-Foto; Excel-Zellen (Text mit Tabs) → Excel-Import
+document.addEventListener("paste",function(e){var t=e.target,tag=t&&t.tagName;if(tag==="TEXTAREA"||tag==="INPUT"||(t&&t.isContentEditable))return;var cd=e.clipboardData;if(!cd)return;
+ var txt=cd.getData("text/plain")||"";if(/\t/.test(txt)&&/\n/.test(txt.trim()+"\n")&&txt.split("\n").length>1){e.preventDefault();$("impBox").open=true;$("impText").value=txt;$("impParse").click();$("impBox").scrollIntoView({behavior:"smooth",block:"start"});dropMsg("📋 Excel-Zeilen eingefügt – bitte unten prüfen und übernehmen.");return;}
+ var fs=[];Array.from(cd.items||[]).forEach(function(it){if(it.kind==="file"){var f=it.getAsFile();if(f&&isImg(f)){if(!f.name||f.name==="image.png")f=new File([f],"eingefuegt_"+Date.now()+"."+((f.type.split("/")[1]||"png").replace("jpeg","jpg")),{type:f.type||"image/png"});fs.push(f);}}});
+ if(fs.length){e.preventDefault();handleFiles(fs,"bd");}});
+// Touch-Geräte (iPhone): Feld dient als Tipp-Feld zur Auswahl
+if(window.matchMedia&&matchMedia("(hover:none) and (pointer:coarse)").matches){document.querySelectorAll(".drop").forEach(function(d){var T=d.querySelector(".dzT"),S=d.querySelector(".dzS");
+ T.textContent=d.id==="dzI"?"📂 Hier tippen: Excel-Datei auswählen":d.id==="dzX"?"🖼 Hier tippen: Excel-Fotos auswählen":"🖼 Hier tippen: Bilder auswählen";S.textContent=d.id==="dzI"?".xlsx, .xls, .csv":"mehrere Bilder auf einmal möglich";});}
 render();renderMark();
 })();
 </script>
