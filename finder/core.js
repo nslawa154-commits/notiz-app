@@ -4,22 +4,54 @@
 function cx(b){return (b.x0+b.x1)/2;} function cy(b){return (b.y0+b.y1)/2;}
 function normWkz(s){s=String(s||"").toUpperCase().replace(/^[^0-9R]+/,"").replace(/O/g,"0").replace(/\s/g,"");s=s.replace(/\.\d{3}$/,"");s=s.replace(/^0+(?=\d)/,"");
   var m=s.match(/^0?R(\d{4})/);if(m)return "R"+m[1];m=s.match(/(\d{5,6})/);return m?String(+m[1]):s;}
+// ===== v3.0: Auftragsnummern auf der Tafel – jede 7-stellige Zahl (nicht nur 18/19/20) =====
+var OLD_FA=/^(1[89]|20)\d{5}$/,ANY_FA=/^[1-9]\d{6}$/;
+var OCR_MAP={O:"0",o:"0",Q:"0",D:"0",I:"1",l:"1",i:"1",S:"5",s:"5",B:"8"};
+// Ein OCR-Wort -> 7-stellige Auftragsnummer oder "" (Wkz, Datum, Uhrzeit, Mengen, Kommazahlen ausgeschlossen)
+function faufToken(t){var s=String(t||"").trim();if(!s)return "";
+  if(/0[0-9OoR]{5}[.,]\d{3}/.test(s)||/0R\d{4}/i.test(s))return "";          // Wkz 036950.001 / 0R0133.001
+  if(/\d[.,:\/]\d/.test(s))return "";                                           // Datum, Uhrzeit, 1.234, 12,5
+  var pre=/^(v|fauf|auf|auftrag|nr|fa)[-.:#]*/i.exec(s),ctx=!!(pre&&pre[0].length);
+  if(pre)s=s.slice(pre[0].length);
+  var tail=/[.,]$/.test(s);s=s.replace(/^[^0-9A-Za-z]+|[^0-9A-Za-z]+$/g,"");
+  var dig=(s.match(/\d/g)||[]).length;if(dig<6||s.length!==7)return "";        // genau 7 Zeichen, höchstens 1 verwechselter Buchstabe (O/0, I/1, S/5, B/8)
+  var d="";for(var i=0;i<s.length;i++){var c=s[i];d+=/\d/.test(c)?c:(OCR_MAP[c]||"x");}
+  if(!ANY_FA.test(d))return "";
+  if(tail&&/^\d0\d{5}$/.test(d)&&!ctx)return "";                               // „1037119.“ = Wkz 037119. mit Störzeichen davor
+  return {f:d,ctx:ctx,sub:dig<7};}
+function isFaufCtx(w){return /^(v|v-?auftrag|fauf|auftrag|auftr\.?)[-.:#]*$/i.test(String(w.t||"").trim());}
+// known: Auftragsnummern aus dem aktuellen Plan (Array oder Objekt). Ohne Plan: alle 7-stelligen Zahlen.
+function faufWords(words,known){var K={},P={},hasK=false;
+  if(known){(Array.isArray(known)?known:Object.keys(known)).forEach(function(f){f=String(f||"").replace(/\D/g,"");if(ANY_FA.test(f)){K[f]=1;P[f.slice(0,2)]=1;hasK=true;}});}
+  var out=[];words.forEach(function(w,wi){var r=faufToken(w.t);if(!r)return;var f=r.f,ok,sure=!!K[f];
+    if(sure)ok=true;
+    else if(!hasK)ok=!r.sub||OLD_FA.test(f);
+    else{var ctx=r.ctx;if(!ctx){var h=w.b.y1-w.b.y0;ctx=words.some(function(o){return o!==w&&isFaufCtx(o)&&Math.abs(cy(o.b)-cy(w.b))<h*0.8&&o.b.x1<=w.b.x0+h*0.5&&w.b.x0-o.b.x1<h*4;});}
+      ok=ctx||!!P[f.slice(0,2)]||OLD_FA.test(f)||Object.keys(K).some(function(x){return ham(x,f)===1;});}
+    if(ok)out.push({t:f,b:w.b,sure:sure});});
+  // Kleingedrucktes (Barcode-Nummern u. ä.) weg: deutlich kleiner als die übrigen Auftragsnummern
+  var hs=out.map(function(o){return o.b.y1-o.b.y0;}).sort(function(a,b){return a-b;}),mh=hs.length>=5?hs[hs.length>>1]:0;
+  return out.filter(function(o){return o.sure||!mh||(o.b.y1-o.b.y0)>=mh*0.6;});}
 // board: find cards
-function findCards(words){
+function findCards(words,known){
   var cards=[];
   var wk=words.filter(function(w){var t=w.t.replace(/^[^0-9]+/,"").replace(/O/g,"0");return /^0(R\d{4}|\d{5})([.,]|$)/.test(t);});
-  var fa=words.filter(function(w){return /^(1[89]|20)\d{5}$/.test(w.t.replace(/\D/g,""));});
+  var fa=faufWords(words,known);
   wk.forEach(function(w){var h=w.b.y1-w.b.y0,best=null,bd=1e9;
-    fa.forEach(function(f){var dy=cy(w.b)-cy(f.b),dx=cx(f.b)-cx(w.b);if(dy>0&&dy<h*2.6&&Math.abs(dx)<(w.b.x1-w.b.x0)*0.9){var d=dy+Math.abs(dx)*0.3;if(d<bd){bd=d;best=f;}}});
+    fa.forEach(function(f){var dy=cy(w.b)-cy(f.b),dx=cx(f.b)-cx(w.b);if(dy>0&&dy<h*2.6&&Math.abs(dx)<(w.b.x1-w.b.x0)*0.9){var d=(dy+Math.abs(dx)*0.3)*(f.sure?0.8:1);if(d<bd){bd=d;best=f;}}});
     var bw=w.b.x1-w.b.x0;
-    cards.push({wkz:normWkz(w.t),wkzRaw:w.t,fauf:best?best.t.replace(/\D/g,""):"",x:cx(w.b),y:cy(w.b)-h*0.6,r:bw*0.75});});
+    cards.push({wkz:normWkz(w.t),wkzRaw:w.t,fauf:best?best.t:"",x:cx(w.b),y:cy(w.b)-h*0.6,r:bw*0.75});});
   // FAUF without Wkz
-  fa.forEach(function(f){if(!cards.some(function(c){return c.fauf===f.t.replace(/\D/g,"");})){var h=f.b.y1-f.b.y0;cards.push({wkz:"",fauf:f.t.replace(/\D/g,""),x:cx(f.b)-h*2,y:cy(f.b)+h,r:h*9});}});
+  fa.forEach(function(f){if(!cards.some(function(c){return c.fauf===f.t;})){var h=f.b.y1-f.b.y0;cards.push({wkz:"",fauf:f.t,x:cx(f.b)-h*2,y:cy(f.b)+h,r:h*9});}});
   // Duplikate (Kachel-Überlappung) zusammenführen
   var res=[];cards.forEach(function(c){var d=res.find(function(o){return Math.hypot(o.x-c.x,o.y-c.y)<Math.max(o.r,c.r)*0.6;});
     if(!d)res.push(c);else{if(!d.fauf&&c.fauf)d.fauf=c.fauf;if(!d.wkz&&c.wkz){d.wkz=c.wkz;d.x=c.x;d.y=c.y;d.r=c.r;}}});
   return res;
 }
+// v3.0: OCR-Wörter kompakt speichern (für Neu-Auswertung ohne erneutes Lesen)
+function packWords(ws){return (ws||[]).map(function(w){return [w.t,Math.round(w.b.x0),Math.round(w.b.y0),Math.round(w.b.x1),Math.round(w.b.y1)];});}
+function unpackWords(a){return (a||[]).map(function(w){return {t:w[0],b:{x0:w[1],y0:w[2],x1:w[3],y1:w[4]}};});}
+var PARSER_V=3;
 function ham(a,b){if(a.length!==b.length)return 9;var n=0;for(var i=0;i<a.length;i++)if(a[i]!==b[i])n++;return n;}
 function match(items,cards){
   return items.map(function(it){var f=String(it.fauf||"").replace(/\D/g,""),wk=normWkz(it.wkz);
@@ -36,7 +68,7 @@ function gridPos(cards){var hs=cards.map(function(c){return c.r;}).sort(function
 // Variante 2: Karten, die NICHT im Plan stehen
 function cleanup(plan,cards){var F={},W={},Fl=[];plan.forEach(function(p){var f=String(p.fauf||"").replace(/\D/g,"");if(f){F[f]=1;Fl.push(f);}var w=normWkz(p.wkz);if(w)W[w]=1;});
   return cards.map(function(c){var f=c.fauf;
-    if(f&&/^(1[89]|20)\d{5}$/.test(f)){if(F[f])return{card:c,status:"plan",why:"FAUF im Plan"};
+    if(f&&ANY_FA.test(f)){if(F[f])return{card:c,status:"plan",why:"FAUF im Plan"};
       if(Fl.some(function(x){return ham(x,f)===1;}))return{card:c,status:"pruefen",why:"FAUF fast wie im Plan – evtl. falsch gelesen"};
       return{card:c,status:"raus",why:"FAUF nicht im Plan"};}
     if(c.wkz){if(W[c.wkz])return{card:c,status:"pruefen",why:"FAUF nicht lesbar, Wkz steht im Plan"};return{card:c,status:"raus",why:"FAUF nicht lesbar, Wkz nicht im Plan"};}
@@ -182,6 +214,20 @@ function groupOps(rows){var map={},ops=[];(rows||[]).forEach(function(r,i){if(!r
   if(r.nach!=null&&r.nach!==""&&!isNaN(r.nach))o.nach=(o.nach||0)+(+r.nach);});
  ops.forEach(function(o){o.done=o.vorg!=null&&o.gut!=null&&o.vorg>0&&o.gut===o.vorg;o.fehlt=(o.vorg!=null&&o.gut!=null)?o.vorg-o.gut:null;});
  return ops;}
+// ===== v3.0: GRÜN-Regel =====
+// Pflicht-Arbeitsplätze für GRÜN – hier ändern, falls nötig:
+var GREEN_REQUIRED=["TISAND","TISCHL","T4BEIZ"];
+// GRÜN = an JEDEM Pflicht-Arbeitsplatz ein Vorgang mit Gut == Vorg UND alle übrigen Vorgänge des Auftrags im Plan fertig.
+// ops: groupOps(...). Ergebnis je Schlüssel (Auftrag bzw. "M"+Wkz): {green, fehlt:[ArbPlatz-Codes]}
+function greenIndex(ops,req){req=req||GREEN_REQUIRED;var by={},A={},M={};
+  (ops||[]).forEach(function(o){var k=o.auftrag?o.auftrag:"M"+normWkz(o.material||"");if(k==="M")return;var g=by[k]=by[k]||{done:{},open:{}};
+    if(o.done)g.done[o.ap]=1;else g.open[o.ap]=1;});
+  Object.keys(by).forEach(function(k){var g=by[k],f=[];req.forEach(function(ap){if(!g.done[ap]||g.open[ap])f.push(ap);});
+    Object.keys(g.open).forEach(function(ap){if(f.indexOf(ap)<0)f.push(ap);});
+    f.sort(function(x,y){return apRank(x)-apRank(y)||(x<y?-1:1);});var r={green:!f.length,fehlt:f};
+    if(k.charAt(0)==="M")M[k.slice(1)]=r;else A[k]=r;});
+  return {a:A,m:M};}
+function fehltText(f){return (f||[]).map(function(ap){return AP_NAMES[ap]||ap;}).join(", ");}
 function apRank(a){var i=AP_ORDER.indexOf(a);return i<0?(a==="?"?999:99):i;}
 function apList(ops,doneFn){var by={},aps=[];doneFn=doneFn||function(o){return o.done;};
  ops.forEach(function(o){var l=o.aps||[o.ap];l.forEach(function(ap){if(!by[ap]){by[ap]={ap:ap,name:AP_NAMES[ap]||"",n:0,done:0};aps.push(by[ap]);}by[ap].n++;if(doneFn(o))by[ap].done++;});});
@@ -206,6 +252,6 @@ function opsByAp(rows){var ops=groupOps(rows);
  aps.sort(function(a,b){return apRank(a.ap)-apRank(b.ap)||(a.ap<b.ap?-1:a.ap>b.ap?1:0);});
  ops=sortOps(ops,"ap",1);aps.forEach(function(a){a.ops=sortOps(a.ops,"auftrag",1);});
  return {ops:ops,aps:aps,done:ops.filter(function(o){return o.done;}).length};}
-var api={estimateSkew:estimateSkew,wordsToCols:wordsToCols,prepExcel:prepExcel,excelLayout:excelLayout,assembleRows:assembleRows,evalOrders:evalOrders,normMat:normMat,num:num,parseTable:parseTable,parseText:parseText,findCards:findCards,match:match,normWkz:normWkz,gridPos:gridPos,cleanup:cleanup,opsByAp:opsByAp,AP_NAMES:AP_NAMES,groupOps:groupOps,sortOps:sortOps,filterOps:filterOps,apList:apList,apRank:apRank};
+var api={estimateSkew:estimateSkew,wordsToCols:wordsToCols,prepExcel:prepExcel,excelLayout:excelLayout,assembleRows:assembleRows,evalOrders:evalOrders,normMat:normMat,num:num,parseTable:parseTable,parseText:parseText,findCards:findCards,match:match,normWkz:normWkz,gridPos:gridPos,cleanup:cleanup,opsByAp:opsByAp,AP_NAMES:AP_NAMES,groupOps:groupOps,sortOps:sortOps,filterOps:filterOps,apList:apList,apRank:apRank,faufToken:faufToken,faufWords:faufWords,packWords:packWords,unpackWords:unpackWords,PARSER_V:PARSER_V,GREEN_REQUIRED:GREEN_REQUIRED,greenIndex:greenIndex,fehltText:fehltText};
 if(typeof module!=="undefined"&&module.exports)module.exports=api;else root.TafelCore=api;
 })(this);

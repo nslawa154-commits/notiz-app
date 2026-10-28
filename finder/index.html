@@ -8,7 +8,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <title>Tafel-Finder</title>
 <script>(function(){var m=location.hash.match(/(?:^#|&)k=([A-Za-z0-9_\-]+)/);if(m){try{localStorage.setItem("tf_plan_key",m[1]);localStorage.removeItem("tf_bot_stand");localStorage.setItem("arbeit_tab","tafel");}catch(e){}history.replaceState(null,"",location.pathname+location.search);}})();</script>
-<meta name="app-version" content="2.9 (28.10.2026)">
+<meta name="app-version" content="3.0 (28.10.2026)">
 <meta name="description" content="Excel-Plan und Tafel fotografieren – erledigte Aufträge (Gutmenge = VorgMenge) werden violett markiert">
 <meta name="apple-mobile-web-app-title" content="Tafel-Finder">
 <style>
@@ -66,7 +66,7 @@ th.so{cursor:pointer;user-select:none;white-space:nowrap;color:#4a148c;text-deco
 </script>
 </head>
 <body>
-<header><h1>🔍 Tafel-Finder <small style="font-size:13px;opacity:.9;font-weight:600;background:#ffffff33;padding:2px 8px;border-radius:8px">Version 2.9</small></h1></header>
+<header><h1>🔍 Tafel-Finder <small style="font-size:13px;opacity:.9;font-weight:600;background:#ffffff33;padding:2px 8px;border-radius:8px">Version 3.0</small></h1></header>
 <main>
 <section class="card" id="markCard" style="border:3px solid #8e24aa;background:#f6effb">
 <div id="markInfo" style="font-size:21px;font-weight:800;color:#4a148c;line-height:1.35">⏳ …</div>
@@ -74,7 +74,7 @@ th.so{cursor:pointer;user-select:none;white-space:nowrap;color:#4a148c;text-deco
 <div style="margin-top:10px;font-size:16px;font-weight:700">Nur einkreisen, was fertig ist bei (mehrere möglich):</div>
 <div class="apgrid fsb" id="mkFs"></div>
 <div id="fltBan1" class="fltban all" hidden></div>
-<div class="legend"><span style="border-color:#1b8f2a;color:#1b5e20">🟢 Grün = alle Arbeitsgänge fertig</span><span style="border-color:#8e24aa;color:#6a1b9a">🟣 Violett = teilweise fertig</span><span style="border-color:#ff7a00;color:#e65100">🟠 Orange = nicht im Plan</span></div>
+<div class="legend"><span style="border-color:#1b8f2a;color:#1b5e20">🟢 Grün = Sandstrahlen, Schleifen und Beizen fertig</span><span style="border-color:#8e24aa;color:#6a1b9a">🟣 Violett = teilweise fertig</span><span style="border-color:#ff7a00;color:#e65100">🟠 Orange = nicht im Plan</span></div>
 <div class="row"><button class="primary big" id="bb2" type="button">🔍 Karten markieren</button></div>
 <div class="row"><button class="big clr" id="mclear" type="button">🧹 Markierungen löschen</button></div>
 </section>
@@ -86,7 +86,7 @@ th.so{cursor:pointer;user-select:none;white-space:nowrap;color:#4a148c;text-deco
 <li>Tafel fotografieren (gerade, scharf, ohne Spiegelung – gern in 2 Hälften) und „Karten markieren“ tippen.</li>
 <li>Gefundene Karten sind violett eingekreist: durchgezogen = sicher, gestrichelt mit „?“ = bitte prüfen.</li>
 </ol>
-<p class="small" style="margin:8px 0 0">Alle Fotos und Ergebnisse bleiben nur auf deinem Handy. Tipp: Über das Browser-Menü „Zum Startbildschirm hinzufügen“. · Version 2.9</p></details>
+<p class="small" style="margin:8px 0 0">Alle Fotos und Ergebnisse bleiben nur auf deinem Handy. Tipp: Über das Browser-Menü „Zum Startbildschirm hinzufügen“. · Version 3.0</p></details>
 <section class="card" id="botCard" style="border:2px solid #6a1b9a">
 <h2>🤖 Plan vom Bot <span id="pairOk" class="ok" hidden>· Gekoppelt ✓</span></h2>
 <div id="botInfo" class="prog" style="font-size:16px;color:#1a1a1a">⏳ Plan wird geladen …</div>
@@ -171,7 +171,7 @@ th.so{cursor:pointer;user-select:none;white-space:nowrap;color:#4a148c;text-deco
 <div id="rsec" hidden><h2 style="margin-top:10px;color:#ef6c00">Aufräumen – Ergebnis</h2><div id="rsum" class="prog"></div>
 <table><thead><tr><th>#</th><th>Wkz</th><th>FAUF</th><th>Ort</th></tr></thead><tbody id="rlist"></tbody></table></div>
 <div id="fltBan2" class="fltban all" hidden></div>
-<div class="legend" id="legend2"><span style="border-color:#1b8f2a;color:#1b5e20">🟢 Grün = alle Arbeitsgänge fertig</span><span style="border-color:#8e24aa;color:#6a1b9a">🟣 Violett = teilweise fertig</span><span style="border-color:#ff7a00;color:#e65100">🟠 Orange = nicht im Plan</span></div>
+<div class="legend" id="legend2"><span style="border-color:#1b8f2a;color:#1b5e20">🟢 Grün = Sandstrahlen, Schleifen und Beizen fertig</span><span style="border-color:#8e24aa;color:#6a1b9a">🟣 Violett = teilweise fertig</span><span style="border-color:#ff7a00;color:#e65100">🟠 Orange = nicht im Plan</span></div>
 <div id="boards"></div>
 <div class="row"><button class="primary" id="shareAll" type="button">📤 Alles teilen (Fotos, markierte Bilder, Liste)</button></div>
 <div class="prog" id="ps"></div>
@@ -179,7 +179,7 @@ th.so{cursor:pointer;user-select:none;white-space:nowrap;color:#4a148c;text-deco
 </section>
 </main>
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@7/dist/tesseract.min.js"></script>
-<script src="core.js?v=28"></script>
+<script src="core.js?v=30"></script>
 <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js" defer></script>
 <script>if(window.self!==window.top){document.documentElement.classList.add("embedded");}else{try{if(localStorage.getItem("tf_help_seen")){document.getElementById("help").open=false;}localStorage.setItem("tf_help_seen","1");}catch(e){}}</script>
 <script>
@@ -212,11 +212,14 @@ function fsClick(e,sortObj,sortKey,after){var b=e.target.closest("[data-f],[data
 var doneIdx=null;function buildDoneIdx(){var ops=TafelCore.groupOps(botRowsC.concat(typeof imp!=="undefined"&&imp?imp:[])),a={},m={};
  var alA={},alM={};ops.forEach(function(o){if(o.auftrag)alA[o.auftrag]=(alA[o.auftrag]!==false)&&o.done;else{var w0=TafelCore.normWkz(o.material||"");if(w0)alM[w0]=(alM[w0]!==false)&&o.done;}});
  ops.forEach(function(o){if(!o.done)return;if(o.auftrag){(a[o.auftrag]=a[o.auftrag]||[]).indexOf(o.ap)<0&&a[o.auftrag].push(o.ap);}var w=TafelCore.normWkz(o.material||"");if(w){(m[w]=m[w]||[]).indexOf(o.ap)<0&&m[w].push(o.ap);}});
- doneIdx={a:a,m:m,alA:alA,alM:alM};return doneIdx;}
-// v2.9: GRÜN = Auftrag an ALLEN seinen Arbeitsplätzen/Vorgängen im Plan fertig (Gut == Vorg je ArbPlatz+Vorgang)
+ // v3.0: GRÜN nur, wenn Sandstrahlen, Schleifen UND Beizen fertig (TafelCore.GREEN_REQUIRED) und alle übrigen Vorgänge fertig
+ var gi=TafelCore.greenIndex(ops);alA={};alM={};Object.keys(gi.a).forEach(function(k){alA[k]=gi.a[k].green;});Object.keys(gi.m).forEach(function(k){alM[k]=gi.m[k].green;});
+ doneIdx={a:a,m:m,alA:alA,alM:alM,gi:gi};return doneIdx;}
+function itemFehlt(it){var d=doneIdx||buildDoneIdx(),r=it.fauf?d.gi.a[it.fauf]:d.gi.m[TafelCore.normWkz(it.wkz||"")];return r&&!r.green?r.fehlt:null;}
+// v3.0: GRÜN = Sandstrahlen + Schleifen + Beizen fertig und alle weiteren Vorgänge im Plan fertig (siehe TafelCore.GREEN_REQUIRED)
 function itemAll(it){var d=doneIdx||buildDoneIdx();return it.fauf?d.alA[it.fauf]===true:d.alM[TafelCore.normWkz(it.wkz||"")]===true;}
 function opAll(o){var d=doneIdx||buildDoneIdx();return o.auftrag?d.alA[o.auftrag]===true:d.alM[TafelCore.normWkz(o.material||"")]===true;}
-var GREEN_TAG='<span class="gtag">🟢 alles fertig</span>';
+var GREEN_TAG='<span class="gtag">🟢 Sandstrahlen, Schleifen und Beizen fertig</span>';
 function itemAps(it){var d=doneIdx||buildDoneIdx();var l=it.fauf?d.a[it.fauf]:d.m[TafelCore.normWkz(it.wkz||"")];return (l||[]).slice().sort(function(x,y){return TafelCore.apRank(x)-TafelCore.apRank(y)||(x<y?-1:1);});}
 function itemInSel(it,sel){sel=sel||apSel;if(!sel.length)return true;return itemAps(it).some(function(a){return sel.indexOf(a)>=0;});}
 function rerenderAll(){doneIdx=null;try{render();}catch(e){}try{if(typeof renderAp==="function")renderAp();}catch(e){}try{if(typeof renderImp==="function")renderImp();}catch(e){}try{if(typeof renderMark==="function")renderMark();}catch(e){}}
@@ -232,11 +235,11 @@ function render(){var h="",sel=apSel;doneIdx=null;
  shown.forEach(function(o){var it=o.it,i=o.i,st="",r=results&&results[i];
  if(r)st=r.status==="sicher"?'<span class="ok">✔ Nr. '+(i+1)+(r.where?' (Foto '+r.where.join(', ')+')':'')+'</span>':r.status==="kandidat"?'<span class="cand">? Nr. '+(i+1)+(r.where?' (Foto '+r.where.join(', ')+')':'')+'</span>':r.status==="ausgeblendet"?'<span class="small">ausgeblendet (Filter)</span>':'<span class="no">✗ nicht gefunden</span>';
  var ap=o.aps.filter(function(a){return a!=="?";});
- if(itemAll(it))st=GREEN_TAG+(st?'<br>'+st:'');
+ if(itemAll(it))st=GREEN_TAG+(st?'<br>'+st:'');else{var fl=itemFehlt(it);if(fl&&fl.length)st=(st?st+'<br>':'')+'<span class="small" style="color:#8e24aa">fehlt: '+esc(TafelCore.fehltText(fl))+'</span>';}
  h+='<tr><td>'+(i+1)+'. '+esc(it.wkz||"–")+'</td><td>'+esc(it.fauf||"–")+'</td><td class="apc">'+(ap.length?ap.map(function(a){return esc(a)+(TafelCore.AP_NAMES[a]?'<span class="small">'+esc(TafelCore.AP_NAMES[a])+'</span>':'');}).join(""):'<span class="small">–</span>')+'</td><td>'+(it.vorgang||it.vorg!=null?esc(vgTxt(it)):'<span class="small">–</span>')+'</td><td>'+st+'</td><td><button class="del" data-i="'+i+'">✕</button></td></tr>';});
  $("list").innerHTML=h||'<tr><td colspan="6" class="small">'+(items.length?'Keine erledigten Aufträge bei '+esc(selLabel(sel))+'.':'Noch keine Einträge.')+'</td></tr>';
  var ng=shown.filter(function(o){return itemAll(o.it);}).length;
- $("doneT").textContent="✅ Erledigte Aufträge ("+(sel.length?shown.length+" von "+items.length+" · "+selLabel(sel):items.length)+(ng?" · 🟢 "+ng+" alles fertig":"")+")";
+ $("doneT").textContent="✅ Erledigte Aufträge ("+(sel.length?shown.length+" von "+items.length+" · "+selLabel(sel):items.length)+(ng?" · 🟢 "+ng+" grün":"")+")";
  var ds=$("doneSort");if(ds)ds.innerHTML=sBtns(doneSort);var df=$("doneFlt");if(df)df.textContent=sel.length?"Filter: "+selLabel(sel)+" (oben bei „Arbeitsgänge“ oder „Karten markieren“ ändern). Platz = Arbeitsplatz, an dem der Vorgang fertig ist.":"Platz = Arbeitsplatz, an dem der Vorgang fertig ist.";}
 $("doneSort").onclick=function(e){fsClick(e,doneSort,"tf_donesort",render);};
 $("list").onclick=function(e){var b=e.target.closest("button");if(!b||b.dataset.i==null)return;items.splice(+b.dataset.i,1);results=null;save();render();};
@@ -349,8 +352,9 @@ $("bx").onclick=async function(){if(!exFiles.length){alert("Bitte zuerst Excel-F
 kvGet("exRead").then(function(l){if(l)showRead(l);}).catch(function(){});
 // ---- v2.6: Markierungen an den Plan binden ----
 var marking=false,markAgain=null,markErr="",autoT=null;
+function knownFauf(){var k={};(plan||[]).concat(items||[]).forEach(function(p){var f=String((p&&p.fauf)||"").replace(/\D/g,"");if(f)k[f]=1;});return Object.keys(k);}
 function getMarked(){try{return JSON.parse(localStorage.getItem("tf_marked"))||null;}catch(e){return null;}}
-function setMarked(m){markErr="";localStorage.setItem("tf_marked",JSON.stringify(m));}
+function setMarked(m){markErr="";if(m)m.pv=TafelCore.PARSER_V;localStorage.setItem("tf_marked",JSON.stringify(m));}
 function curStand(){return localStorage.getItem("tf_bot_stand")||"";}
 function botDn(){var v=localStorage.getItem("tf_bot_dn");return v==null?"?":+v;}
 function fmtShort(iso){var d=new Date(iso);if(isNaN(d))return String(iso);var p={};new Intl.DateTimeFormat("de-DE",{timeZone:"Europe/Berlin",day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit",hourCycle:"h23"}).formatToParts(d).forEach(function(x){p[x.type]=x.value;});
@@ -375,10 +379,10 @@ function renderMark(busy){renderBan();var el=$("markInfo"),sub=$("markSub"),m=ge
  if(m.none){el.textContent="📋 "+head;sub.textContent="Alte Markierungen sind gelöscht. Noch keine Tafel-Fotos – Tafel fotografieren, die App markiert dann von selbst.";return;}
  if(m.empty){el.textContent="✅ Markiert mit "+head;sub.textContent="Keine erledigten Aufträge im Plan – auf den Fotos ist nichts markiert.";return;}
  el.textContent="✅ Markiert mit "+head;
- sub.textContent=(mode!=="raus"?"Auf der Tafel: "+m.s+" sicher, "+m.k+" bitte prüfen"+(m.g?", davon 🟢 "+m.g+" grün (alles fertig)":"")+((m.f||[]).length?" · Filter: "+selLabel(m.f):""):"")+(mode!=="fertig"?(mode!=="raus"?" · ":"")+"rausnehmen: "+(m.rr||0):"")+" · "+m.n+" Foto(s) – "+(m.day?dayLabel(m.day):"heute");}
+ sub.textContent=(mode!=="raus"?"Auf der Tafel: "+m.s+" sicher, "+m.k+" bitte prüfen"+(m.g?", davon 🟢 "+m.g+" grün (Sandstrahlen, Schleifen, Beizen fertig)":"")+((m.f||[]).length?" · Filter: "+selLabel(m.f):""):"")+(mode!=="fertig"?(mode!=="raus"?" · ":"")+"rausnehmen: "+(m.rr||0):"")+" · "+m.n+" Foto(s) – "+(m.day?dayLabel(m.day):"heute");}
 function clearMarks(){results=null;window.__raus=[];markedOuts=[];boardsFrom=null;$("boards").innerHTML="";showRaus([]);$("pb").textContent="";render();
  return Promise.all(["boards","raus","pb","results"].map(function(k){return kvSet(k,null).catch(function(){});}));}
-async function autoMark(){var st=curStand();if(!st){renderMark();return;}var m=getMarked();if(m&&m.stand===st){renderMark();return;}
+async function autoMark(){var st=curStand();if(!st){renderMark();return;}var m=getMarked();if(m&&m.stand===st&&(m.pv===TafelCore.PARSER_V||m.cleared)){renderMark();return;}
  await clearMarks();var F=bdFiles.length?null:latestArchive();
  if(!bdFiles.length&&!F.length){setMarked({stand:st,dn:botDn(),s:0,k:0,n:0,none:true,ts:Date.now()});renderMark();$("pb").textContent="🧹 Alte Markierungen gelöscht. Tafel fotografieren – die App markiert dann von selbst mit dem Plan vom "+fmtShort(st)+".";return;}
  $("pb").textContent="🧹 Alte Markierungen gelöscht – markiere mit dem neuen Plan …";await markBoards(true,F);}
@@ -400,13 +404,18 @@ async function markBoards(auto,filesIn){var F=filesIn||bdFiles,old=F!==bdFiles;
  if(why){if(!auto){alert(why);return;}setMarked({stand:curStand(),dn:botDn(),s:0,k:0,rr:0,n:F.length,day:old&&F.length?F[0]._ts:null,none:!F.length,empty:!!F.length,ts:Date.now()});renderMark();return;}
  marking=true;renderMark(true);var ok=false;
  $("boards").innerHTML="";markedOuts=[];var outs=[],rall=[],rn=0;var comb=items.map(function(it,i){return{item:it,status:useIdx.indexOf(i)<0?"ausgeblendet":"nicht gefunden",where:[]};});
- try{for(var bi=0;bi<F.length;bi++){var im=await loadScaled(F[bi],4200),W=im.width,H=im.height,cols=2,rows=3,ov=Math.round(W/12),all=[],n=0;var cached=await kvGet("cards_"+F[bi]._id+"_"+W).catch(function(){return null;});
-  if(!cached&&typeof Tesseract==="undefined")throw new Error("Texterkennung nicht geladen (Internet?) – bitte später nochmal öffnen.");
-  if(!cached)for(var r=0;r<rows;r++)for(var c=0;c<cols;c++){n++;var x0=Math.max(0,Math.round(c*W/cols-ov)),y0=Math.max(0,Math.round(r*H/rows-ov)),x1=Math.min(W,Math.round((c+1)*W/cols+ov)),y1=Math.min(H,Math.round((r+1)*H/rows+ov));
+ try{for(var bi=0;bi<F.length;bi++){var im=await loadScaled(F[bi],4200),W=im.width,H=im.height,cols=2,rows=3,ov=Math.round(W/12),all=[],n=0;var cached=await kvGet("cards_"+F[bi]._id+"_"+W).catch(function(){return null;}),cp=await kvGet("cardsP_"+F[bi]._id).catch(function(){return null;});
+  // v3.0: gespeicherten Rohtext neu auswerten (kein neues Lesen). Ohne Rohtext einmal neu lesen; offline alte Kartenliste nehmen.
+  var edited=!!(cp&&cp.edited&&cached),savedW=!edited&&cp&&cp.W===W&&cp.words?TafelCore.unpackWords(cp.words):null,manual=(cached||[]).filter(function(k){return k.manual;});
+  if(!edited&&!savedW&&!(cached&&typeof Tesseract==="undefined"))cached=null;
+  if(savedW){all=savedW;cached=null;}
+  if(!cached&&!savedW&&typeof Tesseract==="undefined")throw new Error("Texterkennung nicht geladen (Internet?) – bitte später nochmal öffnen.");
+  if(!cached&&!savedW)for(var r=0;r<rows;r++)for(var c=0;c<cols;c++){n++;var x0=Math.max(0,Math.round(c*W/cols-ov)),y0=Math.max(0,Math.round(r*H/rows-ov)),x1=Math.min(W,Math.round((c+1)*W/cols+ov)),y1=Math.min(H,Math.round((r+1)*H/rows+ov));
    var tw=Math.min(2600,Math.round((x1-x0)*1.5)),sc=tw/(x1-x0),cv=canvasOf(im,tw,true,[x0,y0,x1-x0,y1-y0]);
    var ws=await ocr(cv,function(p){prog("Tafel-Foto "+(bi+1)+"/"+F.length+": lese Teil "+n+"/6 – "+p+" %");});cv.width=0;
    ws.forEach(function(w){all.push({t:w.t,b:{x0:w.b.x0/sc+x0,x1:w.b.x1/sc+x0,y0:w.b.y0/sc+y0,y1:w.b.y1/sc+y0}});});}
-  var cards=cached||TafelCore.gridPos(TafelCore.findCards(all));if(!cached)kvSet("cards_"+F[bi]._id+"_"+W,cards).catch(function(){});kvSet("cardsP_"+F[bi]._id,{W:W,cards:cards}).catch(function(){});
+  var cards=cached||TafelCore.gridPos(TafelCore.findCards(all,knownFauf())).concat(manual);var pw=cached?null:TafelCore.packWords(all);
+  if(!cached)kvSet("cards_"+F[bi]._id+"_"+W,cards).catch(function(){});if(pw||!cp)kvSet("cardsP_"+F[bi]._id,pw?{W:W,cards:cards,words:pw,pv:TafelCore.PARSER_V}:{W:W,cards:cards}).catch(function(){});
   var res=mode==="raus"?[]:TafelCore.match(L,cards),clean=mode==="fertig"?[]:TafelCore.cleanup(plan,cards);
   clean.filter(function(m){return m.status!=="plan";}).sort(function(a,b){return (a.status==="raus"?0:1)-(b.status==="raus"?0:1)||a.card.row-b.card.row||a.card.col-b.card.col;}).forEach(function(m){m.n=++rn;rall.push({n:m.n,status:m.status,why:m.why+(m.card.manual?' (manuell eingetragen)':''),wkz:m.card.wkz,fauf:m.card.fauf,foto:bi+1,row:m.card.row||'–',col:m.card.col||'–'});});
   res.forEach(function(m,j){var i=useIdx[j];m.no=i+1;m.all=itemAll(items[i]);comb[i].all=m.all;if(m.status==="sicher"||(m.status==="kandidat"&&comb[i].status!=="sicher")){if(m.status==="sicher"&&comb[i].status!=="sicher")comb[i].where=[];comb[i].status=m.status;comb[i].where.push(bi+1);}});
@@ -416,7 +425,7 @@ async function markBoards(auto,filesIn){var F=filesIn||bdFiles,old=F!==bdFiles;
   var dl=document.createElement("button");dl.textContent="⬇ Bild "+(bi+1)+" speichern";(function(o,i){dl.onclick=function(){o.toBlob(function(b){var a=document.createElement("a");a.href=URL.createObjectURL(b);a.download="tafel_"+i+"_markiert.jpg";a.click();},"image/jpeg",0.85);};})(out,bi+1);
   box.appendChild(dl);$("boards").appendChild(box);var ob=await new Promise(function(r){out.toBlob(function(b){r({title:h.textContent,blob:b});},"image/jpeg",0.92);});outs.push(ob);markedOuts.push(ob);box.appendChild(shareBtn(ob.blob,"tafel_"+(bi+1)+"_markiert","Bild "+(bi+1)));im.width=0;await tick();}
   results=mode==="raus"?results:comb;render();showRaus(rall);kvSet("raus",rall);kvSet("boards",outs);kvSet("boardsTs",Date.now());kvSet("results",results);var s=comb.filter(function(m){return m.status==="sicher";}).length,k=comb.filter(function(m){return m.status==="kandidat";}).length,g=comb.filter(function(m){return m.all&&(m.status==="sicher"||m.status==="kandidat");}).length;
-  var rr=rall.filter(function(x){return x.status==="raus";}).length,rq=rall.length-rr;$("pb").textContent="✅ Gesamt ("+F.length+" Foto(s)"+(old?" – "+dayLabel(F[0]._ts):"")+")"+(mode!=="raus"?" · Fertige: "+s+" sicher, "+k+" prüfen (davon 🟢 "+g+" grün = alles fertig), "+(L.length-s-k)+" nicht gefunden"+(fsel.length?", "+(items.length-L.length)+" ausgeblendet (Filter)":""):"")+(mode!=="fertig"?" · Rausnehmen: "+rr+" · Prüfen: "+rq+(fsel.length?" (orange auf den Fotos ausgeblendet, solange ein Arbeitsplatz-Filter aktiv ist)":""):"")+". Nicht gelesene Karten werden nicht markiert – bitte Tafel trotzdem kurz ansehen.";kvSet("pb",$("pb").textContent);boardsFrom=null;ok=true;
+  var rr=rall.filter(function(x){return x.status==="raus";}).length,rq=rall.length-rr;$("pb").textContent="✅ Gesamt ("+F.length+" Foto(s)"+(old?" – "+dayLabel(F[0]._ts):"")+")"+(mode!=="raus"?" · Fertige: "+s+" sicher, "+k+" prüfen (davon 🟢 "+g+" grün = Sandstrahlen, Schleifen und Beizen fertig), "+(L.length-s-k)+" nicht gefunden"+(fsel.length?", "+(items.length-L.length)+" ausgeblendet (Filter)":""):"")+(mode!=="fertig"?" · Rausnehmen: "+rr+" · Prüfen: "+rq+(fsel.length?" (orange auf den Fotos ausgeblendet, solange ein Arbeitsplatz-Filter aktiv ist)":""):"")+". Nicht gelesene Karten werden nicht markiert – bitte Tafel trotzdem kurz ansehen.";kvSet("pb",$("pb").textContent);boardsFrom=null;ok=true;
   setMarked({stand:curStand(),dn:botDn(),s:s,k:k,rr:rr,n:F.length,day:old?F[0]._ts:null,ts:Date.now(),f:fsel,fn:L.length,g:g});}
  catch(e){$("pb").textContent="Fehler: "+e.message;markErr=e.message;}
  marking=false;renderMark();if(markAgain){var q=markAgain;markAgain=null;await markBoards(q.auto,q.files);}}
@@ -512,7 +521,7 @@ function renderImp(){var w=$("impWrap");w.hidden=!imp.length;doneIdx=null;if(!im
  var aps=TafelCore.apList(impOps,impDone),sel=apSel,shown=TafelCore.sortOps(TafelCore.filterOps(impOps,sel),impSort.k,impSort.d,impDone);
  $("impFs").innerHTML=fBtns(aps,sel,impOps.length,impOps.filter(impDone).length,true);$("impSort").innerHTML=sBtns(impSort);
  document.querySelectorAll("#impTbl th.so").forEach(function(th){var on=th.dataset.s===impSort.k;th.classList.toggle("on",on);th.textContent=th.textContent.replace(/ [▲▼]$/,"")+(on?(impSort.d===-1?" ▼":" ▲"):"");});
- $("impRows").innerHTML=shown.map(function(o){return '<tr><td><input type="checkbox" data-g="'+o._g+'"'+(o.rowDone?' checked':'')+'>'+(opAll(o)?'<div title="alle Arbeitsgänge fertig">🟢</div>':'')+'</td><td class="apc">'+esc(o.ap==="?"?"–":o.ap)+(TafelCore.AP_NAMES[o.ap]?'<span class="small">'+esc(TafelCore.AP_NAMES[o.ap])+'</span>':'')+'</td><td>'+esc(o.auftrag||"")+'</td><td>'+esc(o.material||"")+'</td><td>'+esc(o.vorgang||"")+'</td><td>'+(o.vorg!=null||o.gut!=null?esc((o.vorg!=null?o.vorg:"?")+"/"+(o.gut!=null?o.gut:"?")):esc(imp[o.idx[0]].bem||""))+'</td><td>'+(o.nach?esc(o.nach):'')+'</td></tr>';}).join("")||'<tr><td colspan="7" class="small">Keine Vorgänge bei '+esc(selLabel(sel))+'.</td></tr>';
+ $("impRows").innerHTML=shown.map(function(o){return '<tr><td><input type="checkbox" data-g="'+o._g+'"'+(o.rowDone?' checked':'')+'>'+(opAll(o)?'<div title="Sandstrahlen, Schleifen und Beizen fertig">🟢</div>':'')+'</td><td class="apc">'+esc(o.ap==="?"?"–":o.ap)+(TafelCore.AP_NAMES[o.ap]?'<span class="small">'+esc(TafelCore.AP_NAMES[o.ap])+'</span>':'')+'</td><td>'+esc(o.auftrag||"")+'</td><td>'+esc(o.material||"")+'</td><td>'+esc(o.vorgang||"")+'</td><td>'+(o.vorg!=null||o.gut!=null?esc((o.vorg!=null?o.vorg:"?")+"/"+(o.gut!=null?o.gut:"?")):esc(imp[o.idx[0]].bem||""))+'</td><td>'+(o.nach?esc(o.nach):'')+'</td></tr>';}).join("")||'<tr><td colspan="7" class="small">Keine Vorgänge bei '+esc(selLabel(sel))+'.</td></tr>';
  var nA={};impOps.forEach(function(o){nA[o.auftrag||("M"+o.material)]=1;});var d=impOps.filter(impDone).length,dup=imp.length-impOps.length,noAp=impOps.every(function(o){return o.ap==="?";});
  $("impAll").textContent=sel.length?"☑ Angezeigte erledigt":"☑ Alle erledigt";$("impNone").textContent=sel.length?"☐ Angezeigte keine":"☐ Keine";
  if(!/^✅ Übernommen/.test($("impInfo").textContent)||imp._fresh)$("impInfo").textContent="📄 "+imp.length+" Zeilen gelesen → "+impOps.length+" Vorgänge in "+Object.keys(nA).length+" Aufträgen"+(dup>0?" ("+dup+" doppelte Buchungszeilen zusammengefasst)":"")+", davon "+d+" Vorgänge erledigt"+(sel.length?" · angezeigt: "+shown.length+" bei "+selLabel(sel):"")+(imp._src?" ("+imp._src+")":"")+"."+(noAp?" ⚠️ Spalte ArbPlatz fehlt – bitte beim Kopieren mit markieren, dann gehen die Arbeitsplatz-Knöpfe.":"");
@@ -576,7 +585,7 @@ $("snapPanel").onclick=async function(e){var b=e.target.closest("button");if(!b|
    ed.onclick=async function(ev){var x=ev.target.dataset.x;if(x){var q=x.split(":");if(confirm("Karte aus der Liste entfernen?")){d.cards[+q[0]].cards.splice(+q[1],1);draw();}return;}
     if(ev.target.id==="edAdd"){var w=$("edW").value.trim(),fa=$("edF").value.replace(/\D/g,"");if(!w&&!fa)return;var pi=d.cards.findIndex(Boolean);if(pi<0){if(!d.photos.length)return;d.cards[0]={W:0,cards:[]};pi=0;}
      d.cards[pi].cards.push({wkz:TafelCore.normWkz(w),wkzRaw:w,fauf:fa,manual:true,x:null,y:null,r:0});draw();}
-    if(ev.target.id==="edSave"){await kvSet("snap_"+id,d);$("pb").textContent="✔ Kartenliste von „"+m.name+"“ gespeichert. Zum Benutzen „📂 Laden“ tippen.";ed.innerHTML="";}};};draw();}};
+    if(ev.target.id==="edSave"){d.cards.forEach(function(c){if(c)c.edited=true;});await kvSet("snap_"+id,d);$("pb").textContent="✔ Kartenliste von „"+m.name+"“ gespeichert. Zum Benutzen „📂 Laden“ tippen.";ed.innerHTML="";}};};draw();}};
 
 $("shareAll").onclick=function(){var fs=[];exFiles.forEach(function(f,i){fs.push(asFile(f,"excel_"+(i+1)));});bdFiles.forEach(function(f,i){fs.push(asFile(f,"tafel_"+(i+1)));});
  markedOuts.forEach(function(o,i){fs.push(asFile(o.blob,"tafel_"+(i+1)+"_markiert"));});var t=listText();
@@ -640,7 +649,7 @@ function renderAp(){var info=$("apInfo"),bt=$("apBtns");
  var list=TafelCore.sortOps(TafelCore.filterOps(apData.ops,apSel),apSort.k,apSort.d);
  var d=list.filter(function(o){return o.done;}),op=list.filter(function(o){return !o.done;});
  var gA={};list.forEach(function(o){if(opAll(o))gA[o.auftrag||"M"+o.material]=1;});var nA={};list.forEach(function(o){nA[o.auftrag||"M"+o.material]=1;});
- $("apTitle").textContent=selLabel()+": "+d.length+" von "+list.length+" fertig · 🟢 "+Object.keys(gA).length+" von "+Object.keys(nA).length+" Aufträgen ganz fertig";
+ $("apTitle").textContent=selLabel()+": "+d.length+" von "+list.length+" fertig · 🟢 "+Object.keys(gA).length+" von "+Object.keys(nA).length+" Aufträgen grün (Sandstrahlen, Schleifen, Beizen fertig)";
  $("apDone").hidden=$("apOpen").hidden=false;$("apDoneT").textContent="✅ Fertig ("+d.length+")";$("apOpenT").textContent="⏳ Offen ("+op.length+")";
  $("apDoneL").innerHTML=d.map(opHtml).join("")||'<div class="op small">Noch nichts fertig.</div>';
  $("apOpenL").innerHTML=op.map(opHtml).join("")||'<div class="op small">Alles fertig 👍</div>';renderMkFs();}

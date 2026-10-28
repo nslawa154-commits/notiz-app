@@ -1,5 +1,5 @@
 // Arbeitsapp Service Worker v2.3 – App-Code immer zuerst frisch aus dem Netz (ohne HTTP-Cache), Cache nur offline.
-const V='arbeitsapp-v2.9';
+const V='arbeitsapp-v3.0';
 const SHELL=['./','index.html','manifest.webmanifest','version.json','icon-192.png','icon-512.png','icon-180.png','icon-maskable-512.png','finder/','finder/index.html','finder/core.js'];
 self.addEventListener('install',e=>{self.skipWaiting();e.waitUntil(caches.open(V).then(c=>Promise.all(SHELL.map(u=>fetch(u,{cache:'no-store'}).then(r=>r.ok&&c.put(u,r)).catch(()=>{})))));});
 self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(k=>Promise.all(k.filter(x=>x!==V&&x!==V+'-cdn'&&x.startsWith('arbeitsapp-')).map(x=>caches.delete(x)))).then(()=>self.clients.claim())
