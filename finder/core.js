@@ -44,7 +44,7 @@ function cleanup(plan,cards){var F={},W={},Fl=[];plan.forEach(function(p){var f=
 // ---- Excel/CSV/Einfügen: Tabelle -> Zeilen ----
 var DONE_RE=/(^|\s)(fertig|erledigt|done|ok)(\s|$|[.,!])|✓|✔/i;
 function hkey(v){var t=String(v==null?"":v).toLowerCase().replace(/[^a-zäöü0-9]/g,"");
-  if(/^vorgmenge|^vorgangsmenge/.test(t))return "vm";if(/^gutmenge|^gutmng/.test(t))return "gm";if(/^nacharb/.test(t))return "na";
+  if(/^arbpl|^arbeitsplatz|^arbeitspl/.test(t))return "ap";if(/^vorgmenge|^vorgangsmenge/.test(t))return "vm";if(/^gutmenge|^gutmng/.test(t))return "gm";if(/^nacharb/.test(t))return "na";
   if(/^vorg(ang)?(nr)?$|^vorg/.test(t))return "vg";if(/^material|^matnr/.test(t))return "mat";if(/^auftrag|^fauf/.test(t))return "auf";
   if(/^wkz|werkzeug/.test(t))return "wkz";if(/^avo/.test(t))return "avo";if(/bemerk/.test(t))return "bem";return null;}
 // grid: Array<Array<string|number>>
@@ -59,9 +59,10 @@ function parseTable(grid){var hdr=-1,col={};
   var g=function(row,k){return col[k]==null?"":(row[col[k]]==null?"":row[col[k]]);};
   var hasQty=col.vm!=null&&col.gm!=null,rows=[];
   for(var i=hdr+1;i<grid.length;i++){var row=grid[i]||[];var f=String(g(row,"auf")).replace(/\D/g,"");var m=String(g(row,"mat")).trim();
-    var o={auftrag:(hdr>=0?/^[1-9]\d{6}$/:/^(1[89]|20)\d{5}$/).test(f)?f:"",material:m,vorgang:String(g(row,"vg")).trim(),vorg:hasQty?num(g(row,"vm")):null,gut:hasQty?num(g(row,"gm")):null,nach:col.na!=null?num(g(row,"na")):null,bem:String(g(row,"bem")).trim()};
+    var o={auftrag:(hdr>=0?/^[1-9]\d{6}$/:/^(1[89]|20)\d{5}$/).test(f)?f:"",material:m,vorgang:String(g(row,"vg")).trim(),vorg:hasQty?num(g(row,"vm")):null,gut:hasQty?num(g(row,"gm")):null,nach:col.na!=null?num(g(row,"na")):null,bem:String(g(row,"bem")).trim(),arbplatz:String(g(row,"ap")).trim().toUpperCase()};
     if(o.vorgang&&/^\d{1,3}$/.test(o.vorgang))o.vorgang=("000"+o.vorgang).slice(-4);
     if(!o.auftrag&&!o.material&&!o.vorgang)continue;
+    if(o.arbplatz&&/^ARBPL/.test(o.arbplatz))continue;// wiederholte Kopfzeile
     if(!o.material&&!o.vorgang&&o.auftrag){o.vorg=o.gut=null;}// Zwischensumme
     rows.push(o);}
   var ev=evalOrders(rows);
@@ -169,19 +170,42 @@ function num(v){if(typeof v==="number")return v;var s=String(v==null?"":v).trim(
   s=s.replace(",",".");return /^-?\d+(\.\d+)?$/.test(s)?parseFloat(s):null;}
 // v2.8: Arbeitsgänge je Arbeitsplatz. Ein Vorgang = ArbPlatz+Auftrag(oder Material)+Vorgang, Mengen EINMAL zählen (nicht über Buchungszeilen summieren).
 // fertig an diesem Arbeitsplatz = Gutmenge == VorgMenge (VorgMenge > 0). Ändert NICHT die Tafel-Regel (evalOrders).
-var AP_NAMES={TISAND:"Sandstrahlen",TISCHL:"Schleifen",T4PENE:"Penetrant",T4BEIZ:"Beizen"};
-function opsByAp(rows){var map={},ops=[];(rows||[]).forEach(function(r){if(!r||r.sub)return;var ap=String(r.arbplatz||"").trim().toUpperCase();
+var AP_NAMES={TISAND:"Sandstrahlen",TISCHL:"Schleifen",T4PENE:"Penetrant",T4BEIZ:"Beizen"},AP_ORDER=["TISAND","TISCHL","T4PENE","T4BEIZ"];
+// v2.9: Buchungszeilen zusammenfassen – gleiche ArbPlatz+Auftrag(oder Material)+Vorgang = EIN Vorgang.
+// VorgMenge/Gutmenge je Vorgang einmal (größter Wert), Nacharbeit über die Buchungen summiert. idx = Zeilennummern im Eingang.
+function groupOps(rows){var map={},ops=[];(rows||[]).forEach(function(r,i){if(!r||r.sub)return;var ap=String(r.arbplatz||"").trim().toUpperCase();
   var auf=String(r.auftrag||"").trim(),mat=String(r.material||"").trim(),vg=String(r.vorgang||"").trim();if(!auf&&!mat&&!vg)return;
   var k=ap+"|"+(auf||"M"+mat)+"|"+vg,o=map[k];
-  if(!o){o=map[k]={ap:ap||"?",auftrag:auf,material:mat,vorgang:vg,vorg:null,gut:null,n:0};ops.push(o);}
-  o.n++;if(!o.material&&mat)o.material=mat;
-  if(r.vorg!=null&&(o.vorg==null||r.vorg>o.vorg))o.vorg=r.vorg;if(r.gut!=null&&(o.gut==null||r.gut>o.gut))o.gut=r.gut;});
+  if(!o){o=map[k]={ap:ap||"?",auftrag:auf,material:mat,vorgang:vg,vorg:null,gut:null,nach:null,n:0,idx:[],rowDone:false};ops.push(o);}
+  o.n++;o.idx.push(i);if(!o.material&&mat)o.material=mat;if(r.done)o.rowDone=true;
+  if(r.vorg!=null&&(o.vorg==null||r.vorg>o.vorg))o.vorg=r.vorg;if(r.gut!=null&&(o.gut==null||r.gut>o.gut))o.gut=r.gut;
+  if(r.nach!=null&&r.nach!==""&&!isNaN(r.nach))o.nach=(o.nach||0)+(+r.nach);});
  ops.forEach(function(o){o.done=o.vorg!=null&&o.gut!=null&&o.vorg>0&&o.gut===o.vorg;o.fehlt=(o.vorg!=null&&o.gut!=null)?o.vorg-o.gut:null;});
+ return ops;}
+function apRank(a){var i=AP_ORDER.indexOf(a);return i<0?(a==="?"?999:99):i;}
+function apList(ops,doneFn){var by={},aps=[];doneFn=doneFn||function(o){return o.done;};
+ ops.forEach(function(o){var l=o.aps||[o.ap];l.forEach(function(ap){if(!by[ap]){by[ap]={ap:ap,name:AP_NAMES[ap]||"",n:0,done:0};aps.push(by[ap]);}by[ap].n++;if(doneFn(o))by[ap].done++;});});
+ aps.sort(function(a,b){return apRank(a.ap)-apRank(b.ap)||(a.ap<b.ap?-1:a.ap>b.ap?1:0);});return aps;}
+function vgNum(v){var n=parseInt(String(v||"").replace(/\D/g,""),10);return isNaN(n)?1e9:n;}
+function cmpStr(a,b){a=String(a||"");b=String(b||"");if(!a&&b)return 1;if(a&&!b)return -1;return a<b?-1:a>b?1:0;}
+// Sortierung: key = ap | vorgang | auftrag | material | status; dir = 1 / -1
+function sortOps(list,key,dir,doneFn){dir=dir===-1?-1:1;doneFn=doneFn||function(o){return o.done;};
+ var apOf=function(o){return (o.aps&&o.aps.length?o.aps[0]:o.ap)||"";};
+ var base=function(a,b){return cmpStr(a.auftrag||a.fauf,b.auftrag||b.fauf)||(vgNum(a.vorgang)-vgNum(b.vorgang))||cmpStr(apOf(a),apOf(b));};
+ var f={ap:function(a,b){return (apRank(apOf(a))-apRank(apOf(b)))||cmpStr(apOf(a),apOf(b));},
+  vorgang:function(a,b){return vgNum(a.vorgang)-vgNum(b.vorgang);},
+  auftrag:function(a,b){return cmpStr(a.auftrag||a.fauf,b.auftrag||b.fauf);},
+  material:function(a,b){return cmpStr(a.material||a.wkz,b.material||b.wkz);},
+  status:function(a,b){return (doneFn(a)?0:1)-(doneFn(b)?0:1);}}[key]||function(){return 0;};
+ return list.slice().sort(function(a,b){return dir*f(a,b)||base(a,b);});}
+// Filter: sel = Liste von ArbPlatz-Codes, leer = alle
+function filterOps(list,sel){if(!sel||!sel.length)return list.slice();return list.filter(function(o){var l=o.aps||[o.ap];return l.some(function(a){return sel.indexOf(a)>=0;});});}
+// v2.8: Arbeitsgänge je Arbeitsplatz. fertig an diesem Arbeitsplatz = Gutmenge == VorgMenge (VorgMenge > 0). Ändert NICHT die Tafel-Regel (evalOrders).
+function opsByAp(rows){var ops=groupOps(rows);
  var by={},aps=[];ops.forEach(function(o){if(!by[o.ap]){by[o.ap]={ap:o.ap,name:AP_NAMES[o.ap]||"",ops:[],done:0};aps.push(by[o.ap]);}by[o.ap].ops.push(o);if(o.done)by[o.ap].done++;});
- var known=Object.keys(AP_NAMES);aps.sort(function(a,b){var ia=known.indexOf(a.ap),ib=known.indexOf(b.ap);ia=ia<0?99:ia;ib=ib<0?99:ib;return ia-ib||(a.ap<b.ap?-1:a.ap>b.ap?1:0);});
- var cmp=function(a,b){return (a.ap<b.ap?-1:a.ap>b.ap?1:0)||(a.auftrag||a.material).localeCompare(b.auftrag||b.material)||a.vorgang.localeCompare(b.vorgang);};
- ops.sort(cmp);aps.forEach(function(a){a.ops.sort(cmp);});
+ aps.sort(function(a,b){return apRank(a.ap)-apRank(b.ap)||(a.ap<b.ap?-1:a.ap>b.ap?1:0);});
+ ops=sortOps(ops,"ap",1);aps.forEach(function(a){a.ops=sortOps(a.ops,"auftrag",1);});
  return {ops:ops,aps:aps,done:ops.filter(function(o){return o.done;}).length};}
-var api={estimateSkew:estimateSkew,wordsToCols:wordsToCols,prepExcel:prepExcel,excelLayout:excelLayout,assembleRows:assembleRows,evalOrders:evalOrders,normMat:normMat,num:num,parseTable:parseTable,parseText:parseText,findCards:findCards,match:match,normWkz:normWkz,gridPos:gridPos,cleanup:cleanup,opsByAp:opsByAp,AP_NAMES:AP_NAMES};
+var api={estimateSkew:estimateSkew,wordsToCols:wordsToCols,prepExcel:prepExcel,excelLayout:excelLayout,assembleRows:assembleRows,evalOrders:evalOrders,normMat:normMat,num:num,parseTable:parseTable,parseText:parseText,findCards:findCards,match:match,normWkz:normWkz,gridPos:gridPos,cleanup:cleanup,opsByAp:opsByAp,AP_NAMES:AP_NAMES,groupOps:groupOps,sortOps:sortOps,filterOps:filterOps,apList:apList,apRank:apRank};
 if(typeof module!=="undefined"&&module.exports)module.exports=api;else root.TafelCore=api;
 })(this);

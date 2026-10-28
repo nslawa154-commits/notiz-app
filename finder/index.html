@@ -8,7 +8,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <title>Tafel-Finder</title>
 <script>(function(){var m=location.hash.match(/(?:^#|&)k=([A-Za-z0-9_\-]+)/);if(m){try{localStorage.setItem("tf_plan_key",m[1]);localStorage.removeItem("tf_bot_stand");localStorage.setItem("arbeit_tab","tafel");}catch(e){}history.replaceState(null,"",location.pathname+location.search);}})();</script>
-<meta name="app-version" content="2.8 (27.10.2026)">
+<meta name="app-version" content="2.9 (28.10.2026)">
 <meta name="description" content="Excel-Plan und Tafel fotografieren – erledigte Aufträge (Gutmenge = VorgMenge) werden violett markiert">
 <meta name="apple-mobile-web-app-title" content="Tafel-Finder">
 <style>
@@ -40,6 +40,15 @@ canvas{width:100%;height:auto;border-radius:10px;margin-top:8px;touch-action:pin
 .apb{flex-direction:column;min-height:84px;font-size:19px;font-weight:800;border:3px solid #d1c4e9;background:#fff;color:#4a148c;line-height:1.25;padding:8px}
 .apb .c{font-size:13px;font-weight:600;color:#666}.apb .z{font-size:17px;font-weight:800;color:#1b5e20;margin-top:2px}.apb.on{background:#6a1b9a;color:#fff;border-color:#4a148c}.apb.on .c,.apb.on .z{color:#fff}
 .op{padding:10px 14px;border-top:1px solid #eee}.op .m{font-size:19px;font-weight:800}.op .d{font-size:16px;margin-top:3px}.op .st{font-size:17px;font-weight:800;margin-top:3px}.op .st.f{color:#2e7d32}.op .st.o{color:#e65100}.op .st.w{color:#c62828}
+.sortrow{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;align-items:center}.sortrow .lb{font-size:15px;font-weight:700;color:#4a148c;margin-right:2px}
+.sb{min-height:48px;font-size:16px;font-weight:700;padding:8px 12px;background:#fff;border:2px solid #d1c4e9;color:#4a148c}.sb.on{background:#4a148c;color:#fff;border-color:#4a148c}
+th.so{cursor:pointer;user-select:none;white-space:nowrap;color:#4a148c;text-decoration:underline dotted}th.so.on{background:#ede7f6}
+.fltban{margin-top:10px;padding:12px 14px;border-radius:12px;background:#4a148c;color:#fff;font-size:20px;font-weight:800;line-height:1.3}.fltban .small{color:#e1bee7;font-size:15px;font-weight:600;display:block;margin-top:3px}
+.fltban.all{background:#ede7f6;color:#4a148c}.fltban.all .small{color:#555}
+.gtag{display:inline-block;background:#2e7d32;color:#fff;font-weight:800;font-size:14px;border-radius:8px;padding:2px 8px;margin:2px 0;white-space:nowrap}
+.legend{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px;font-size:17px;font-weight:800}.legend span{padding:6px 10px;border-radius:10px;border:4px solid;background:#fff}
+.apc{font-weight:800;white-space:nowrap}.apc .small{display:block;font-weight:400;font-size:12px}
+#impTbl td,#impTbl th{padding:8px 5px}#impTbl{font-size:15px}
 </style>
 <script>
 // ---- Selbst-Aktualisierung (v2.3): neue Version erkennen und einmal automatisch neu laden ----
@@ -57,11 +66,15 @@ canvas{width:100%;height:auto;border-radius:10px;margin-top:8px;touch-action:pin
 </script>
 </head>
 <body>
-<header><h1>🔍 Tafel-Finder <small style="font-size:13px;opacity:.9;font-weight:600;background:#ffffff33;padding:2px 8px;border-radius:8px">Version 2.8</small></h1></header>
+<header><h1>🔍 Tafel-Finder <small style="font-size:13px;opacity:.9;font-weight:600;background:#ffffff33;padding:2px 8px;border-radius:8px">Version 2.9</small></h1></header>
 <main>
 <section class="card" id="markCard" style="border:3px solid #8e24aa;background:#f6effb">
 <div id="markInfo" style="font-size:21px;font-weight:800;color:#4a148c;line-height:1.35">⏳ …</div>
 <div id="markSub" style="font-size:17px;margin-top:6px;color:#222"></div>
+<div style="margin-top:10px;font-size:16px;font-weight:700">Nur einkreisen, was fertig ist bei (mehrere möglich):</div>
+<div class="apgrid fsb" id="mkFs"></div>
+<div id="fltBan1" class="fltban all" hidden></div>
+<div class="legend"><span style="border-color:#1b8f2a;color:#1b5e20">🟢 Grün = alle Arbeitsgänge fertig</span><span style="border-color:#8e24aa;color:#6a1b9a">🟣 Violett = teilweise fertig</span><span style="border-color:#ff7a00;color:#e65100">🟠 Orange = nicht im Plan</span></div>
 <div class="row"><button class="primary big" id="bb2" type="button">🔍 Karten markieren</button></div>
 <div class="row"><button class="big clr" id="mclear" type="button">🧹 Markierungen löschen</button></div>
 </section>
@@ -73,7 +86,7 @@ canvas{width:100%;height:auto;border-radius:10px;margin-top:8px;touch-action:pin
 <li>Tafel fotografieren (gerade, scharf, ohne Spiegelung – gern in 2 Hälften) und „Karten markieren“ tippen.</li>
 <li>Gefundene Karten sind violett eingekreist: durchgezogen = sicher, gestrichelt mit „?“ = bitte prüfen.</li>
 </ol>
-<p class="small" style="margin:8px 0 0">Alle Fotos und Ergebnisse bleiben nur auf deinem Handy. Tipp: Über das Browser-Menü „Zum Startbildschirm hinzufügen“. · Version 2.8</p></details>
+<p class="small" style="margin:8px 0 0">Alle Fotos und Ergebnisse bleiben nur auf deinem Handy. Tipp: Über das Browser-Menü „Zum Startbildschirm hinzufügen“. · Version 2.9</p></details>
 <section class="card" id="botCard" style="border:2px solid #6a1b9a">
 <h2>🤖 Plan vom Bot <span id="pairOk" class="ok" hidden>· Gekoppelt ✓</span></h2>
 <div id="botInfo" class="prog" style="font-size:16px;color:#1a1a1a">⏳ Plan wird geladen …</div>
@@ -92,11 +105,12 @@ canvas{width:100%;height:auto;border-radius:10px;margin-top:8px;touch-action:pin
 <section class="card" id="apCard" style="border:3px solid #6a1b9a">
 <h2 style="font-size:20px">🏭 Arbeitsgänge – was ist fertig?</h2>
 <div id="apInfo" style="font-size:16px">⏳ Plan wird geladen …</div>
-<div class="apgrid" id="apBtns"></div>
+<div class="apgrid fsb" id="apBtns"></div>
+<div class="sortrow" id="apSort"></div>
 <div id="apTitle" style="font-size:18px;font-weight:800;margin-top:12px;color:#4a148c"></div>
 <details class="fold okf" id="apDone" hidden><summary><span id="apDoneT">✅ Fertig</span><span class="tg">▸ öffnen</span></summary><div id="apDoneL"></div></details>
 <details class="fold opf" id="apOpen" hidden><summary><span id="apOpenT">⏳ Offen</span><span class="tg">▸ öffnen</span></summary><div id="apOpenL"></div></details>
-<div class="small" style="margin-top:8px">Fertig an diesem Arbeitsplatz = Gutmenge gleich VorgMenge für diesen Vorgang (jede Buchung nur einmal gezählt). Für die Tafel (violette Kreise) gilt weiter: Auftrag erledigt, wenn mindestens eine Zeile stimmt.</div>
+<div class="small" style="margin-top:8px">Fertig an diesem Arbeitsplatz = Gutmenge gleich VorgMenge für diesen Vorgang (Buchungszeilen zusammengefasst, Nacharbeit summiert). Mehrere Arbeitsplätze antippen = zusammen anzeigen, „Alle“ = alles. Die Auswahl gilt auch für die Tafel: Es wird nur eingekreist, was an den gewählten Arbeitsplätzen fertig ist. Bei „Alle“ gilt die normale Regel: Auftrag erledigt, wenn mindestens eine Zeile stimmt.</div>
 </section>
 <section class="card">
 <h2>1. Excel-Plan fotografieren <span class="small">(nur nötig, wenn kein Plan vom Bot da ist)</span></h2>
@@ -112,10 +126,12 @@ canvas{width:100%;height:auto;border-radius:10px;margin-top:8px;touch-action:pin
 <textarea id="impText" rows="5" placeholder="Aus Excel kopieren & einfügen: Zeilen inkl. Kopfzeile markieren (Material, Auftrag, Vorgang, VorgMenge, Gutmenge) → Kopieren → hier lange drücken → Einfügen"></textarea>
 <div class="row"><button id="impParse" type="button">📋 Eingefügten Text lesen</button></div>
 <div class="prog" id="impInfo"></div>
-<div id="impWrap" hidden><div class="row"><button id="impAll" type="button" class="small2">☑ Alle erledigt</button><button id="impNone" type="button" class="small2">☐ Keine</button></div>
-<div style="max-height:360px;overflow:auto;margin-top:6px"><table><thead><tr><th>Erl.</th><th>Auftrag</th><th>Material</th><th>Vorgang</th><th>Vorg/Gut</th></tr></thead><tbody id="impRows"></tbody></table></div>
+<div id="impWrap" hidden><div style="margin-top:8px;font-size:16px;font-weight:700">Arbeitsplatz (mehrere möglich):</div><div class="apgrid fsb" id="impFs"></div>
+<div class="sortrow" id="impSort"></div>
+<div class="row"><button id="impAll" type="button" class="small2">☑ Alle erledigt</button><button id="impNone" type="button" class="small2">☐ Keine</button></div>
+<div style="max-height:420px;overflow:auto;margin-top:6px"><table id="impTbl"><thead><tr><th class="so" data-s="status">Erl.</th><th class="so" data-s="ap">Platz</th><th class="so" data-s="auftrag">Auftrag</th><th class="so" data-s="material">Material</th><th class="so" data-s="vorgang">Vorgang</th><th>Vorg/Gut</th><th>Nach</th></tr></thead><tbody id="impRows"></tbody></table></div>
 <div class="row"><button class="primary" id="impApply" type="button">✅ In Plan + Liste übernehmen</button></div>
-<div class="small">Häkchen = erledigt (Gutmenge = VorgMenge, automatisch gesetzt) → Variante 1 (violett). Ein Auftrag gilt als erledigt, wenn mindestens eine Zeile abgehakt ist. Alle Zeilen = Plan → Variante 2 (orange). Häkchen kann man von Hand ändern.</div></div>
+<div class="small">Gleiche Buchungen (Arbeitsplatz + Auftrag + Vorgang) stehen nur einmal da. Spaltenkopf antippen = sortieren (nochmal = umdrehen). „Übernehmen“ nimmt immer alle Zeilen, auch die ausgefilterten. Häkchen = erledigt (Gutmenge = VorgMenge, automatisch gesetzt) → Variante 1 (violett). Ein Auftrag gilt als erledigt, wenn mindestens eine Zeile abgehakt ist. Alle Zeilen = Plan → Variante 2 (orange). Häkchen kann man von Hand ändern.</div></div>
 </details>
 </section>
 <section class="card" id="modeCard">
@@ -126,7 +142,7 @@ canvas{width:100%;height:auto;border-radius:10px;margin-top:8px;touch-action:pin
 </section>
 <section class="card">
 <h2>Erledigte Aufträge (Gutmenge = VorgMenge)</h2>
-<details class="fold okf" id="doneBox"><summary><span id="doneT">✅ Erledigte Aufträge (0)</span><span class="tg">▸ öffnen</span></summary><div style="padding:0 6px 6px"><table><thead><tr><th>Material</th><th>Auftrag</th><th>Vorgang · Vorg/Gut</th><th>Status</th><th></th></tr></thead><tbody id="list"></tbody></table></div></details>
+<details class="fold okf" id="doneBox"><summary><span id="doneT">✅ Erledigte Aufträge (0)</span><span class="tg">▸ öffnen</span></summary><div style="padding:0 6px 6px"><div class="sortrow" id="doneSort"></div><div class="small" id="doneFlt" style="margin-top:6px"></div><div style="overflow:auto"><table><thead><tr><th>Material</th><th>Auftrag</th><th>Platz</th><th>Vorgang · Vorg/Gut</th><th>Status</th><th></th></tr></thead><tbody id="list"></tbody></table></div></div></details>
 <div class="row"><input type="text" id="mf" inputmode="numeric" placeholder="Auftrag / FAUF (7-stellig)"><input type="text" id="mw" placeholder="Material / Wkz (z. B. 012345.001)"></div>
 <div class="row"><button id="madd">➕ Manuell hinzufügen</button><button id="mclr">🗑 Liste leeren</button></div>
 <div class="row"><button id="allclr" class="del">⚠️ Alles löschen (Fotos, Liste, Ergebnisse)</button></div>
@@ -154,6 +170,8 @@ canvas{width:100%;height:auto;border-radius:10px;margin-top:8px;touch-action:pin
 <div class="prog" id="pb"></div>
 <div id="rsec" hidden><h2 style="margin-top:10px;color:#ef6c00">Aufräumen – Ergebnis</h2><div id="rsum" class="prog"></div>
 <table><thead><tr><th>#</th><th>Wkz</th><th>FAUF</th><th>Ort</th></tr></thead><tbody id="rlist"></tbody></table></div>
+<div id="fltBan2" class="fltban all" hidden></div>
+<div class="legend" id="legend2"><span style="border-color:#1b8f2a;color:#1b5e20">🟢 Grün = alle Arbeitsgänge fertig</span><span style="border-color:#8e24aa;color:#6a1b9a">🟣 Violett = teilweise fertig</span><span style="border-color:#ff7a00;color:#e65100">🟠 Orange = nicht im Plan</span></div>
 <div id="boards"></div>
 <div class="row"><button class="primary" id="shareAll" type="button">📤 Alles teilen (Fotos, markierte Bilder, Liste)</button></div>
 <div class="prog" id="ps"></div>
@@ -171,15 +189,57 @@ var $=function(i){return document.getElementById(i);},KEY="tafelfinder_liste_v1"
 var items=[];try{items=JSON.parse(localStorage.getItem(KEY))||[];}catch(e){}
 var results=null,worker=null,PKEY="tafelfinder_plan_v1",plan=[];try{plan=JSON.parse(localStorage.getItem(PKEY))||[];}catch(e){}
 var mode=localStorage.getItem("tf_mode")||"fertig";
-function savePlan(){localStorage.setItem(PKEY,JSON.stringify(plan));if(typeof kvSet==="function")kvSet("plan",plan).catch(function(){});renderPlan();}
+// ---- v2.9: gemeinsamer Arbeitsplatz-Filter (Mehrfachauswahl, gilt für Arbeitsgänge, erledigte Liste, Excel-Import und Tafel-Kreise) + Sortierung ----
+function lsJ(k,d){try{var v=JSON.parse(localStorage.getItem(k));return v==null?d:v;}catch(e){return d;}}
+var apSel=(function(){var v=lsJ("tf_apsel",null);if(Array.isArray(v))return v;var o=localStorage.getItem("tf_ap");return o&&o!=="ALLE"?[o]:[];})();
+var SORTS=[["ap","Arbeitsplatz"],["vorgang","Vorgang"],["auftrag","Auftrag"],["material","Material"],["status","Status"]];
+var apSort=lsJ("tf_apsort",{k:"auftrag",d:1}),impSort=lsJ("tf_impsort",{k:"ap",d:1}),doneSort=lsJ("tf_donesort",{k:"ap",d:1});
+var botRowsC=[];// Zeilen vom Bot-Plan (für Filter)
+function apNm(a){return a==="?"?"ohne Platz":(TafelCore.AP_NAMES[a]||a);}
+function apLbl(a){return a==="?"?"ohne Arbeitsplatz":(TafelCore.AP_NAMES[a]?TafelCore.AP_NAMES[a]+" ("+a+")":a);}
+function selLabel(sel){sel=sel||apSel;return sel.length?sel.map(apLbl).join(" + "):"Alle Arbeitsplätze";}
+// aps: [{ap,n,done}] ; withDone: Zähler "x / n fertig"
+function fBtns(aps,sel,tot,totDone,withDone){var have={};aps.forEach(function(a){have[a.ap]=1;});aps=aps.slice();sel.forEach(function(a){if(!have[a])aps.push({ap:a,n:0,done:0});});
+ var z=function(d,n){return withDone?d+' / '+n+' fertig':n+(n===1?' Vorgang':' Vorgänge');};
+ var b='<button type="button" class="apb'+(!sel.length?' on':'')+'" data-f="ALLE">Alle<span class="z">'+z(totDone,tot)+'</span></button>';
+ aps.forEach(function(a){var on=sel.indexOf(a.ap)>=0,nm=TafelCore.AP_NAMES[a.ap];b+='<button type="button" class="apb'+(on?' on':'')+'" data-f="'+esc(a.ap)+'">'+(on?'✔ ':'')+esc(nm||apNm(a.ap))+(nm?'<span class="c">'+esc(a.ap)+'</span>':'')+'<span class="z">'+z(a.done,a.n)+'</span></button>';});return b;}
+function sBtns(st){return '<span class="lb">Sortieren:</span>'+SORTS.map(function(x){var on=st.k===x[0];return '<button type="button" class="sb'+(on?' on':'')+'" data-s="'+x[0]+'">'+x[1]+(on?(st.d===-1?' ▼':' ▲'):'')+'</button>';}).join("");}
+function setApSel(v){apSel=v;localStorage.setItem("tf_apsel",JSON.stringify(apSel));localStorage.removeItem("tf_ap");rerenderAll();if(typeof refilterBoards==="function")refilterBoards();}
+function fsClick(e,sortObj,sortKey,after){var b=e.target.closest("[data-f],[data-s]");if(!b)return false;
+ if(b.dataset.f!=null){var f=b.dataset.f;if(f==="ALLE")setApSel([]);else{var v=apSel.slice(),i=v.indexOf(f);if(i>=0)v.splice(i,1);else v.push(f);setApSel(v);}return true;}
+ var k=b.dataset.s;if(sortObj.k===k)sortObj.d=sortObj.d===-1?1:-1;else{sortObj.k=k;sortObj.d=1;}localStorage.setItem(sortKey,JSON.stringify(sortObj));after();return true;}
+// Vorgänge aus Bot-Plan + Import: welche Arbeitsplätze haben je Auftrag/Material einen FERTIGEN Vorgang
+var doneIdx=null;function buildDoneIdx(){var ops=TafelCore.groupOps(botRowsC.concat(typeof imp!=="undefined"&&imp?imp:[])),a={},m={};
+ var alA={},alM={};ops.forEach(function(o){if(o.auftrag)alA[o.auftrag]=(alA[o.auftrag]!==false)&&o.done;else{var w0=TafelCore.normWkz(o.material||"");if(w0)alM[w0]=(alM[w0]!==false)&&o.done;}});
+ ops.forEach(function(o){if(!o.done)return;if(o.auftrag){(a[o.auftrag]=a[o.auftrag]||[]).indexOf(o.ap)<0&&a[o.auftrag].push(o.ap);}var w=TafelCore.normWkz(o.material||"");if(w){(m[w]=m[w]||[]).indexOf(o.ap)<0&&m[w].push(o.ap);}});
+ doneIdx={a:a,m:m,alA:alA,alM:alM};return doneIdx;}
+// v2.9: GRÜN = Auftrag an ALLEN seinen Arbeitsplätzen/Vorgängen im Plan fertig (Gut == Vorg je ArbPlatz+Vorgang)
+function itemAll(it){var d=doneIdx||buildDoneIdx();return it.fauf?d.alA[it.fauf]===true:d.alM[TafelCore.normWkz(it.wkz||"")]===true;}
+function opAll(o){var d=doneIdx||buildDoneIdx();return o.auftrag?d.alA[o.auftrag]===true:d.alM[TafelCore.normWkz(o.material||"")]===true;}
+var GREEN_TAG='<span class="gtag">🟢 alles fertig</span>';
+function itemAps(it){var d=doneIdx||buildDoneIdx();var l=it.fauf?d.a[it.fauf]:d.m[TafelCore.normWkz(it.wkz||"")];return (l||[]).slice().sort(function(x,y){return TafelCore.apRank(x)-TafelCore.apRank(y)||(x<y?-1:1);});}
+function itemInSel(it,sel){sel=sel||apSel;if(!sel.length)return true;return itemAps(it).some(function(a){return sel.indexOf(a)>=0;});}
+function rerenderAll(){doneIdx=null;try{render();}catch(e){}try{if(typeof renderAp==="function")renderAp();}catch(e){}try{if(typeof renderImp==="function")renderImp();}catch(e){}try{if(typeof renderMark==="function")renderMark();}catch(e){}}
+
+function savePlan(){dedupePlan();localStorage.setItem(PKEY,JSON.stringify(plan));if(typeof kvSet==="function")kvSet("plan",plan).catch(function(){});renderPlan();}
 function renderPlan(){var el=document.getElementById("planN");if(!el)return;el.textContent=plan.length;var pt=document.getElementById("planT");if(pt)pt.textContent="📋 Alle Aufträge im Plan ("+plan.length+")";document.getElementById("planList").innerHTML=plan.map(function(p){return esc(p.fauf)+" / "+esc(p.wkz||"–");}).join(" · ")||"leer";}
 function save(){localStorage.setItem(KEY,JSON.stringify(items));if(typeof persistItems==="function")persistItems();}
 function esc(s){return String(s).replace(/[&<>"]/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c];});}
-function render(){var h="";items.forEach(function(it,i){var st="",r=results&&results[i];
- if(r)st=r.status==="sicher"?'<span class="ok">✔ Nr. '+(i+1)+(r.where?' (Foto '+r.where.join(', ')+')':'')+'</span>':r.status==="kandidat"?'<span class="cand">? Nr. '+(i+1)+(r.where?' (Foto '+r.where.join(', ')+')':'')+'</span>':'<span class="no">✗ nicht gefunden</span>';
- h+='<tr><td>'+(i+1)+'. '+esc(it.wkz||"–")+'</td><td>'+esc(it.fauf||"–")+'</td><td>'+(it.vorgang||it.vorg!=null?esc(vgTxt(it)):'<span class="small">–</span>')+'</td><td>'+st+'</td><td><button class="del" data-i="'+i+'">✕</button></td></tr>';});
- $("list").innerHTML=h||'<tr><td colspan="5" class="small">Noch keine Einträge.</td></tr>';$("doneT").textContent="✅ Erledigte Aufträge ("+items.length+")";}
-$("list").onclick=function(e){var b=e.target.closest("button");if(!b)return;items.splice(+b.dataset.i,1);results=null;save();render();};
+function render(){var h="",sel=apSel;doneIdx=null;
+ var L=items.map(function(it,i){return {it:it,i:i,fauf:it.fauf,wkz:it.wkz,material:it.wkz,auftrag:it.fauf,vorgang:it.vorgang,aps:itemAps(it)};});
+ var shown=L.filter(function(o){return itemInSel(o.it,sel);});
+ shown=TafelCore.sortOps(shown.map(function(o){if(!o.aps.length)o.aps=["?"];return o;}),doneSort.k,doneSort.d,function(o){var r=results&&results[o.i];return r&&r.status==="sicher";});
+ shown.forEach(function(o){var it=o.it,i=o.i,st="",r=results&&results[i];
+ if(r)st=r.status==="sicher"?'<span class="ok">✔ Nr. '+(i+1)+(r.where?' (Foto '+r.where.join(', ')+')':'')+'</span>':r.status==="kandidat"?'<span class="cand">? Nr. '+(i+1)+(r.where?' (Foto '+r.where.join(', ')+')':'')+'</span>':r.status==="ausgeblendet"?'<span class="small">ausgeblendet (Filter)</span>':'<span class="no">✗ nicht gefunden</span>';
+ var ap=o.aps.filter(function(a){return a!=="?";});
+ if(itemAll(it))st=GREEN_TAG+(st?'<br>'+st:'');
+ h+='<tr><td>'+(i+1)+'. '+esc(it.wkz||"–")+'</td><td>'+esc(it.fauf||"–")+'</td><td class="apc">'+(ap.length?ap.map(function(a){return esc(a)+(TafelCore.AP_NAMES[a]?'<span class="small">'+esc(TafelCore.AP_NAMES[a])+'</span>':'');}).join(""):'<span class="small">–</span>')+'</td><td>'+(it.vorgang||it.vorg!=null?esc(vgTxt(it)):'<span class="small">–</span>')+'</td><td>'+st+'</td><td><button class="del" data-i="'+i+'">✕</button></td></tr>';});
+ $("list").innerHTML=h||'<tr><td colspan="6" class="small">'+(items.length?'Keine erledigten Aufträge bei '+esc(selLabel(sel))+'.':'Noch keine Einträge.')+'</td></tr>';
+ var ng=shown.filter(function(o){return itemAll(o.it);}).length;
+ $("doneT").textContent="✅ Erledigte Aufträge ("+(sel.length?shown.length+" von "+items.length+" · "+selLabel(sel):items.length)+(ng?" · 🟢 "+ng+" alles fertig":"")+")";
+ var ds=$("doneSort");if(ds)ds.innerHTML=sBtns(doneSort);var df=$("doneFlt");if(df)df.textContent=sel.length?"Filter: "+selLabel(sel)+" (oben bei „Arbeitsgänge“ oder „Karten markieren“ ändern). Platz = Arbeitsplatz, an dem der Vorgang fertig ist.":"Platz = Arbeitsplatz, an dem der Vorgang fertig ist.";}
+$("doneSort").onclick=function(e){fsClick(e,doneSort,"tf_donesort",render);};
+$("list").onclick=function(e){var b=e.target.closest("button");if(!b||b.dataset.i==null)return;items.splice(+b.dataset.i,1);results=null;save();render();};
 $("madd").onclick=function(){var f=$("mf").value.replace(/\D/g,""),w=$("mw").value.trim();if(!f&&!w)return;items.push({fauf:f,wkz:w});$("mf").value="";$("mw").value="";results=null;save();render();};
 $("mclr").onclick=function(){if(confirm("Liste wirklich leeren?")){items=[];results=null;save();kvSet("results",null);render();}};
 function loadImg(file){return new Promise(function(res,rej){var u=URL.createObjectURL(file),im=new Image();im.onload=function(){res(im);};im.onerror=rej;im.src=u;});}
@@ -268,10 +328,13 @@ function showRead(list){var el=$("exRead");if(!list||!list.length){el.hidden=tru
  var dn=list.filter(function(o){return o.done;}).length;$("exReadSum").textContent="Gelesen: "+list.length+" Aufträge, davon "+dn+" erledigt (Gutmenge = VorgMenge)";
  $("exReadRows").innerHTML=list.map(function(o){return '<tr><td>'+(o.done?'<span class="ok">✔</span>':'<span class="small">–</span>')+'</td><td>'+esc(o.wkz||"?")+'</td><td>'+esc(o.fauf||"?")+'</td><td>'+esc(vgTxt(o))+(o.doneVg&&o.doneVg.length>1?' <span class="small">(auch '+esc(o.doneVg.slice(1).join(", "))+')</span>':'')+'</td></tr>';}).join("");}
 function addOrders(orders,src){var np=0,ni=0;orders.forEach(function(r){if(!r.fauf&&!r.wkz)return;
-  if(!plan.some(function(p){return r.fauf?p.fauf===r.fauf:normW(p.wkz)===normW(r.wkz);})){plan.push({fauf:r.fauf,wkz:r.wkz});np++;}
+  if(!plan.some(function(p){return r.fauf?p.fauf===r.fauf:normW(p.wkz)===normW(r.wkz);})){plan.push({fauf:r.fauf,wkz:r.wkz,src:src||""});np++;}
   if(r.done){var it={fauf:r.fauf,wkz:r.wkz,vorgang:r.vorgang,vorg:r.vorg,gut:r.gut,src:src};var k=items.findIndex(function(i){return r.fauf?i.fauf===r.fauf:(!i.fauf&&normW(i.wkz)===normW(r.wkz));});
    if(k<0){items.push(it);ni++;}else if(!items[k].vorgang){items[k].vorgang=r.vorgang;items[k].vorg=r.vorg;items[k].gut=r.gut;}}});
- savePlan();return {np:np,ni:ni};}
+ dedupePlan();savePlan();return {np:np,ni:ni};}
+// v2.9: Plan ohne Duplikate (gleicher Auftrag nur einmal; Einträge nur mit Wkz fallen weg, wenn dieselbe Wkz schon mit Auftrag drin ist)
+function dedupePlan(){var F={},W={},out=[],n0=plan.length;plan.forEach(function(p){if(p.fauf){if(F[p.fauf])return;F[p.fauf]=1;var w=normW(p.wkz);if(w)W[w]=1;out.push(p);}});
+ plan.forEach(function(p){if(p.fauf)return;var w=normW(p.wkz);if(!w||W[w])return;W[w]=1;out.push(p);});plan=out;return n0-out.length;}
 function normW(w){return TafelCore.normWkz(w||"");}
 $("bx").onclick=async function(){if(!exFiles.length){alert("Bitte zuerst Excel-Foto(s) hinzufügen.");return;}
  if(typeof Tesseract==="undefined"){$("px").textContent="Texterkennung nicht geladen (Internet?). Bitte Nummern manuell eintragen.";return;}
@@ -294,7 +357,16 @@ function fmtShort(iso){var d=new Date(iso);if(isNaN(d))return String(iso);var p=
  return p.day+"."+p.month+"., "+(+p.hour)+":"+p.minute;}
 function prog(t){$("pb").textContent=t;if(marking)$("markSub").textContent=t;}
 function latestArchive(){if(!bdArchive.length)return [];var mx=0;bdArchive.forEach(function(f){if((f._ts||0)>mx)mx=f._ts;});var k=dayKey(mx);return bdArchive.filter(function(f){return dayKey(f._ts)===k;});}
-function renderMark(busy){var el=$("markInfo"),sub=$("markSub"),m=getMarked(),st=curStand();
+function renderBan(){var m=getMarked(),b1=$("fltBan1"),b2=$("fltBan2");if(!b1)return;
+ var f=apSel,show=m&&!m.none&&!m.cleared&&!m.empty&&m.s!=null,same=show&&JSON.stringify((m.f||[]).slice().sort())===JSON.stringify(f.slice().sort()),t,cls;
+ if(mode==="raus"){t="🟠 Nur Aufräumen (orange) – der Arbeitsplatz-Filter gilt nur für violette Kreise.";cls="fltban all";}
+ else if(!show){t="🔎 Filter: "+esc(selLabel(f))+(f.length?'<span class="small">Beim Markieren werden nur Karten eingekreist, die an '+(f.length>1?"diesen Arbeitsplätzen":"diesem Arbeitsplatz")+' fertig sind.</span>':"");cls=f.length?"fltban":"fltban all";}
+ else if(!same){t="⏳ Filter: "+esc(selLabel(f))+' – wird neu markiert …';cls="fltban";}
+ else{t="🔎 Filter: "+esc(selLabel(f))+" – "+(m.s+m.k)+" eingekreist"+(m.g?" (🟢 "+m.g+" grün)":"")+'<span class="small">'+(m.k?m.s+" sicher, "+m.k+" bitte prüfen (gestrichelt)":"alle sicher")+(f.length?" · "+(m.fn!=null?m.fn:"?")+" von "+items.length+" erledigten Aufträgen sind hier fertig"+(mode==="beides"?" · orange ausgeblendet":""):"")+'</span>';cls=f.length?"fltban":"fltban all";}
+ [b1,b2].forEach(function(b){b.innerHTML=t;b.className=cls;b.hidden=false;});b2.hidden=!show&&!(f.length&&bdFiles.length);}
+function refilterBoards(){var m=getMarked();renderBan();if(!m||m.none||m.cleared)return;if(mode==="raus")return;var F=bdFiles.length?null:latestArchive();if(!bdFiles.length&&(!F||!F.length))return;
+ $("pb").textContent="⏳ Filter geändert – markiere neu ("+selLabel()+") …";markBoards(true,F);}
+function renderMark(busy){renderBan();var el=$("markInfo"),sub=$("markSub"),m=getMarked(),st=curStand();
  var head=st?"Plan vom "+fmtShort(st)+" – "+botDn()+" erledigt":"eigenem Plan – "+items.length+" erledigt";
  if(busy||marking){el.textContent="⏳ Markiere mit "+head+" …";sub.textContent="Bitte kurz warten – die App macht das allein.";return;}
  if(!st&&!m){el.textContent="📋 Noch kein Plan vom Bot";sub.textContent="Sobald der Bot den Plan geschickt hat, markiert die App die Tafel-Fotos von selbst.";return;}
@@ -303,7 +375,7 @@ function renderMark(busy){var el=$("markInfo"),sub=$("markSub"),m=getMarked(),st
  if(m.none){el.textContent="📋 "+head;sub.textContent="Alte Markierungen sind gelöscht. Noch keine Tafel-Fotos – Tafel fotografieren, die App markiert dann von selbst.";return;}
  if(m.empty){el.textContent="✅ Markiert mit "+head;sub.textContent="Keine erledigten Aufträge im Plan – auf den Fotos ist nichts markiert.";return;}
  el.textContent="✅ Markiert mit "+head;
- sub.textContent=(mode!=="raus"?"Auf der Tafel: "+m.s+" sicher (violett), "+m.k+" bitte prüfen":"")+(mode!=="fertig"?(mode!=="raus"?" · ":"")+"rausnehmen: "+(m.rr||0):"")+" · "+m.n+" Foto(s) – "+(m.day?dayLabel(m.day):"heute");}
+ sub.textContent=(mode!=="raus"?"Auf der Tafel: "+m.s+" sicher, "+m.k+" bitte prüfen"+(m.g?", davon 🟢 "+m.g+" grün (alles fertig)":"")+((m.f||[]).length?" · Filter: "+selLabel(m.f):""):"")+(mode!=="fertig"?(mode!=="raus"?" · ":"")+"rausnehmen: "+(m.rr||0):"")+" · "+m.n+" Foto(s) – "+(m.day?dayLabel(m.day):"heute");}
 function clearMarks(){results=null;window.__raus=[];markedOuts=[];boardsFrom=null;$("boards").innerHTML="";showRaus([]);$("pb").textContent="";render();
  return Promise.all(["boards","raus","pb","results"].map(function(k){return kvSet(k,null).catch(function(){});}));}
 async function autoMark(){var st=curStand();if(!st){renderMark();return;}var m=getMarked();if(m&&m.stand===st){renderMark();return;}
@@ -316,17 +388,18 @@ function onClear(){if(!confirm("Alle Markierungen (violett und orange) auf den T
 $("mclear").onclick=onClear;$("mclear2").onclick=onClear;
 function drawBoard(c,im,matches,clean){var W=im.width,H=im.height;c.width=W;c.height=H;var x=c.getContext("2d");x.drawImage(im,0,0);
  var lw=Math.max(8,W/120);x.strokeStyle="#8e24aa";x.fillStyle="#8e24aa";x.font="bold "+Math.round(W/35)+"px sans-serif";
- matches.forEach(function(m,i){m.cards.forEach(function(cd){if(cd.x==null)return;var r=Math.max(cd.r,W/14);x.lineWidth=m.status==="sicher"?lw:lw*0.6;x.setLineDash(m.status==="sicher"?[]:[lw*2,lw*1.5]);
-  x.beginPath();x.ellipse(cd.x,cd.y,r,r*0.85,0,0,Math.PI*2);x.stroke();x.setLineDash([]);x.fillText((i+1)+(m.status==="sicher"?"":"?"),cd.x-r,cd.y-r*0.85);});});
+ matches.forEach(function(m,i){var col=m.all?"#1b8f2a":"#8e24aa";x.strokeStyle=col;x.fillStyle=col;m.cards.forEach(function(cd){if(cd.x==null)return;var r=Math.max(cd.r,W/14);x.lineWidth=m.status==="sicher"?lw:lw*0.6;x.setLineDash(m.status==="sicher"?[]:[lw*2,lw*1.5]);
+  x.beginPath();x.ellipse(cd.x,cd.y,r,r*0.85,0,0,Math.PI*2);x.stroke();x.setLineDash([]);x.fillText((m.no||i+1)+(m.status==="sicher"?"":"?"),cd.x-r,cd.y-r*0.85);});});
  x.strokeStyle="#ff7a00";x.fillStyle="#ff7a00";(clean||[]).forEach(function(m){if(m.card.x==null)return;if(m.status==="plan"){if(mode!=="fertig"){x.save();x.lineWidth=Math.max(2,lw/4);x.strokeStyle="rgba(120,120,120,.6)";x.beginPath();var cd0=m.card,r0=Math.max(cd0.r,W/14)*0.8;x.ellipse(cd0.x,cd0.y,r0,r0*0.85,0,0,Math.PI*2);x.stroke();x.restore();}return;}
   var cd=m.card,r=Math.max(cd.r,W/14);x.lineWidth=m.status==="raus"?lw:lw*0.6;x.setLineDash(m.status==="raus"?[]:[lw*2,lw*1.5]);x.beginPath();x.ellipse(cd.x,cd.y,r,r*0.85,0,0,Math.PI*2);x.stroke();x.setLineDash([]);
   x.lineWidth=4;x.strokeStyle="#fff";var lab=m.n+(m.status==="raus"?"":"?");x.strokeText(lab,cd.x+r*0.4,cd.y-r*0.85);x.fillText(lab,cd.x+r*0.4,cd.y-r*0.85);x.strokeStyle="#ff7a00";});}
 async function markBoards(auto,filesIn){var F=filesIn||bdFiles,old=F!==bdFiles;
  if(marking){markAgain={auto:auto,files:filesIn};return;}
+ var fsel=mode==="raus"?[]:apSel.slice();doneIdx=null;var useIdx=items.map(function(it,i){return i;}).filter(function(i){return itemInSel(items[i],fsel);}),L=useIdx.map(function(i){return items[i];});
  var why=!F.length?"Bitte zuerst Tafel-Foto(s) hinzufügen.":(mode!=="raus"&&!items.length)?"Liste der erledigten Aufträge ist leer.":(mode!=="fertig"&&!plan.length)?"Plan ist leer – bitte zuerst Excel-Fotos auswerten.":"";
  if(why){if(!auto){alert(why);return;}setMarked({stand:curStand(),dn:botDn(),s:0,k:0,rr:0,n:F.length,day:old&&F.length?F[0]._ts:null,none:!F.length,empty:!!F.length,ts:Date.now()});renderMark();return;}
  marking=true;renderMark(true);var ok=false;
- $("boards").innerHTML="";markedOuts=[];var outs=[],rall=[],rn=0;var comb=items.map(function(it){return{item:it,status:"nicht gefunden",where:[]};});
+ $("boards").innerHTML="";markedOuts=[];var outs=[],rall=[],rn=0;var comb=items.map(function(it,i){return{item:it,status:useIdx.indexOf(i)<0?"ausgeblendet":"nicht gefunden",where:[]};});
  try{for(var bi=0;bi<F.length;bi++){var im=await loadScaled(F[bi],4200),W=im.width,H=im.height,cols=2,rows=3,ov=Math.round(W/12),all=[],n=0;var cached=await kvGet("cards_"+F[bi]._id+"_"+W).catch(function(){return null;});
   if(!cached&&typeof Tesseract==="undefined")throw new Error("Texterkennung nicht geladen (Internet?) – bitte später nochmal öffnen.");
   if(!cached)for(var r=0;r<rows;r++)for(var c=0;c<cols;c++){n++;var x0=Math.max(0,Math.round(c*W/cols-ov)),y0=Math.max(0,Math.round(r*H/rows-ov)),x1=Math.min(W,Math.round((c+1)*W/cols+ov)),y1=Math.min(H,Math.round((r+1)*H/rows+ov));
@@ -334,17 +407,17 @@ async function markBoards(auto,filesIn){var F=filesIn||bdFiles,old=F!==bdFiles;
    var ws=await ocr(cv,function(p){prog("Tafel-Foto "+(bi+1)+"/"+F.length+": lese Teil "+n+"/6 – "+p+" %");});cv.width=0;
    ws.forEach(function(w){all.push({t:w.t,b:{x0:w.b.x0/sc+x0,x1:w.b.x1/sc+x0,y0:w.b.y0/sc+y0,y1:w.b.y1/sc+y0}});});}
   var cards=cached||TafelCore.gridPos(TafelCore.findCards(all));if(!cached)kvSet("cards_"+F[bi]._id+"_"+W,cards).catch(function(){});kvSet("cardsP_"+F[bi]._id,{W:W,cards:cards}).catch(function(){});
-  var res=mode==="raus"?[]:TafelCore.match(items,cards),clean=mode==="fertig"?[]:TafelCore.cleanup(plan,cards);
+  var res=mode==="raus"?[]:TafelCore.match(L,cards),clean=mode==="fertig"?[]:TafelCore.cleanup(plan,cards);
   clean.filter(function(m){return m.status!=="plan";}).sort(function(a,b){return (a.status==="raus"?0:1)-(b.status==="raus"?0:1)||a.card.row-b.card.row||a.card.col-b.card.col;}).forEach(function(m){m.n=++rn;rall.push({n:m.n,status:m.status,why:m.why+(m.card.manual?' (manuell eingetragen)':''),wkz:m.card.wkz,fauf:m.card.fauf,foto:bi+1,row:m.card.row||'–',col:m.card.col||'–'});});
-  res.forEach(function(m,i){if(m.status==="sicher"||(m.status==="kandidat"&&comb[i].status!=="sicher")){if(m.status==="sicher"&&comb[i].status!=="sicher")comb[i].where=[];comb[i].status=m.status;comb[i].where.push(bi+1);}});
+  res.forEach(function(m,j){var i=useIdx[j];m.no=i+1;m.all=itemAll(items[i]);comb[i].all=m.all;if(m.status==="sicher"||(m.status==="kandidat"&&comb[i].status!=="sicher")){if(m.status==="sicher"&&comb[i].status!=="sicher")comb[i].where=[];comb[i].status=m.status;comb[i].where.push(bi+1);}});
   var box=document.createElement("div"),h=document.createElement("h2"),s1=res.filter(function(m){return m.status==="sicher";}).length,k1=res.filter(function(m){return m.status==="kandidat";}).length;
-  var r1=clean.filter(function(m){return m.status==="raus";}).length,q1=clean.filter(function(m){return m.status==="pruefen";}).length;h.textContent="Tafel-Foto "+(bi+1)+(old?" ("+dayLabel(F[bi]._ts)+")":"")+": "+cards.length+" Karten erkannt"+(mode!=="raus"?" · fertig: "+s1+" sicher, "+k1+" prüfen":"")+(mode!=="fertig"?" · rausnehmen: "+r1+", prüfen: "+q1:"");box.appendChild(h);
-  var out=document.createElement("canvas");drawBoard(out,im,res,clean);box.appendChild(out);
+  var r1=clean.filter(function(m){return m.status==="raus";}).length,q1=clean.filter(function(m){return m.status==="pruefen";}).length;h.textContent="Tafel-Foto "+(bi+1)+(old?" ("+dayLabel(F[bi]._ts)+")":"")+": "+cards.length+" Karten erkannt"+(fsel.length?" · Filter: "+selLabel(fsel):"")+(mode!=="raus"?" · fertig: "+s1+" sicher, "+k1+" prüfen":"")+(mode!=="fertig"?" · rausnehmen: "+r1+", prüfen: "+q1:"");box.appendChild(h);
+  var out=document.createElement("canvas");drawBoard(out,im,res,fsel.length?[]:clean);box.appendChild(out);
   var dl=document.createElement("button");dl.textContent="⬇ Bild "+(bi+1)+" speichern";(function(o,i){dl.onclick=function(){o.toBlob(function(b){var a=document.createElement("a");a.href=URL.createObjectURL(b);a.download="tafel_"+i+"_markiert.jpg";a.click();},"image/jpeg",0.85);};})(out,bi+1);
   box.appendChild(dl);$("boards").appendChild(box);var ob=await new Promise(function(r){out.toBlob(function(b){r({title:h.textContent,blob:b});},"image/jpeg",0.92);});outs.push(ob);markedOuts.push(ob);box.appendChild(shareBtn(ob.blob,"tafel_"+(bi+1)+"_markiert","Bild "+(bi+1)));im.width=0;await tick();}
-  results=mode==="raus"?results:comb;render();showRaus(rall);kvSet("raus",rall);kvSet("boards",outs);kvSet("boardsTs",Date.now());kvSet("results",results);var s=comb.filter(function(m){return m.status==="sicher";}).length,k=comb.filter(function(m){return m.status==="kandidat";}).length;
-  var rr=rall.filter(function(x){return x.status==="raus";}).length,rq=rall.length-rr;$("pb").textContent="✅ Gesamt ("+F.length+" Foto(s)"+(old?" – "+dayLabel(F[0]._ts):"")+")"+(mode!=="raus"?" · Fertige: "+s+" sicher, "+k+" prüfen, "+(items.length-s-k)+" nicht gefunden":"")+(mode!=="fertig"?" · Rausnehmen: "+rr+" · Prüfen: "+rq:"")+". Nicht gelesene Karten werden nicht markiert – bitte Tafel trotzdem kurz ansehen.";kvSet("pb",$("pb").textContent);boardsFrom=null;ok=true;
-  setMarked({stand:curStand(),dn:botDn(),s:s,k:k,rr:rr,n:F.length,day:old?F[0]._ts:null,ts:Date.now()});}
+  results=mode==="raus"?results:comb;render();showRaus(rall);kvSet("raus",rall);kvSet("boards",outs);kvSet("boardsTs",Date.now());kvSet("results",results);var s=comb.filter(function(m){return m.status==="sicher";}).length,k=comb.filter(function(m){return m.status==="kandidat";}).length,g=comb.filter(function(m){return m.all&&(m.status==="sicher"||m.status==="kandidat");}).length;
+  var rr=rall.filter(function(x){return x.status==="raus";}).length,rq=rall.length-rr;$("pb").textContent="✅ Gesamt ("+F.length+" Foto(s)"+(old?" – "+dayLabel(F[0]._ts):"")+")"+(mode!=="raus"?" · Fertige: "+s+" sicher, "+k+" prüfen (davon 🟢 "+g+" grün = alles fertig), "+(L.length-s-k)+" nicht gefunden"+(fsel.length?", "+(items.length-L.length)+" ausgeblendet (Filter)":""):"")+(mode!=="fertig"?" · Rausnehmen: "+rr+" · Prüfen: "+rq+(fsel.length?" (orange auf den Fotos ausgeblendet, solange ein Arbeitsplatz-Filter aktiv ist)":""):"")+". Nicht gelesene Karten werden nicht markiert – bitte Tafel trotzdem kurz ansehen.";kvSet("pb",$("pb").textContent);boardsFrom=null;ok=true;
+  setMarked({stand:curStand(),dn:botDn(),s:s,k:k,rr:rr,n:F.length,day:old?F[0]._ts:null,ts:Date.now(),f:fsel,fn:L.length,g:g});}
  catch(e){$("pb").textContent="Fehler: "+e.message;markErr=e.message;}
  marking=false;renderMark();if(markAgain){var q=markAgain;markAgain=null;await markBoards(q.auto,q.files);}}
 $("bb").onclick=function(){markBoards(false);};$("bb2").onclick=function(){markBoards(false,bdFiles.length?null:latestArchive());};
@@ -432,13 +505,27 @@ $("allclr").onclick=function(){if(!confirm("Wirklich ALLES löschen? Alle Fotos,
  thumbs(exFiles,$("tx"));thumbs(bdFiles,$("tb"));$("boards").innerHTML="";$("pb").textContent="";$("px").textContent="";render();});};
 // ---- Excel-Import (Datei / Einfügen) ----
 var imp=[];
-function renderImp(){var w=$("impWrap");w.hidden=!imp.length;$("impRows").innerHTML=imp.map(function(r,i){return '<tr><td><input type="checkbox" data-i="'+i+'"'+(r.done?' checked':'')+'></td><td>'+esc(r.auftrag||r.fauf||"")+'</td><td>'+esc(r.material||r.wkz||"")+'</td><td>'+esc(r.vorgang||r.avo||"")+'</td><td>'+(r.vorg!=null||r.gut!=null?esc((r.vorg!=null?r.vorg:"?")+"/"+(r.gut!=null?r.gut:"?")):esc(r.bem||""))+'</td></tr>';}).join("");
- var d=imp.filter(function(r){return r.done;}).length;if(imp.length)$("impInfo").textContent="📄 "+imp.length+" Zeilen gelesen, davon "+d+" erledigt"+(imp._src?" ("+imp._src+")":"")+".";}
-$("impRows").onchange=function(e){var i=e.target.dataset.i;if(i==null)return;imp[+i].done=e.target.checked;kvSet("imported",{rows:imp,src:imp._src||""});renderImp();};
-$("impAll").onclick=function(){imp.forEach(function(r){r.done=true;});kvSet("imported",{rows:imp,src:imp._src||""});renderImp();};
-$("impNone").onclick=function(){imp.forEach(function(r){r.done=false;});kvSet("imported",{rows:imp,src:imp._src||""});renderImp();};
+var impOps=[];
+function impDone(o){return !!o.rowDone;}
+function renderImp(){var w=$("impWrap");w.hidden=!imp.length;doneIdx=null;if(!imp.length)return;
+ impOps=TafelCore.groupOps(imp);impOps.forEach(function(o,g){o._g=g;});
+ var aps=TafelCore.apList(impOps,impDone),sel=apSel,shown=TafelCore.sortOps(TafelCore.filterOps(impOps,sel),impSort.k,impSort.d,impDone);
+ $("impFs").innerHTML=fBtns(aps,sel,impOps.length,impOps.filter(impDone).length,true);$("impSort").innerHTML=sBtns(impSort);
+ document.querySelectorAll("#impTbl th.so").forEach(function(th){var on=th.dataset.s===impSort.k;th.classList.toggle("on",on);th.textContent=th.textContent.replace(/ [▲▼]$/,"")+(on?(impSort.d===-1?" ▼":" ▲"):"");});
+ $("impRows").innerHTML=shown.map(function(o){return '<tr><td><input type="checkbox" data-g="'+o._g+'"'+(o.rowDone?' checked':'')+'>'+(opAll(o)?'<div title="alle Arbeitsgänge fertig">🟢</div>':'')+'</td><td class="apc">'+esc(o.ap==="?"?"–":o.ap)+(TafelCore.AP_NAMES[o.ap]?'<span class="small">'+esc(TafelCore.AP_NAMES[o.ap])+'</span>':'')+'</td><td>'+esc(o.auftrag||"")+'</td><td>'+esc(o.material||"")+'</td><td>'+esc(o.vorgang||"")+'</td><td>'+(o.vorg!=null||o.gut!=null?esc((o.vorg!=null?o.vorg:"?")+"/"+(o.gut!=null?o.gut:"?")):esc(imp[o.idx[0]].bem||""))+'</td><td>'+(o.nach?esc(o.nach):'')+'</td></tr>';}).join("")||'<tr><td colspan="7" class="small">Keine Vorgänge bei '+esc(selLabel(sel))+'.</td></tr>';
+ var nA={};impOps.forEach(function(o){nA[o.auftrag||("M"+o.material)]=1;});var d=impOps.filter(impDone).length,dup=imp.length-impOps.length,noAp=impOps.every(function(o){return o.ap==="?";});
+ $("impAll").textContent=sel.length?"☑ Angezeigte erledigt":"☑ Alle erledigt";$("impNone").textContent=sel.length?"☐ Angezeigte keine":"☐ Keine";
+ if(!/^✅ Übernommen/.test($("impInfo").textContent)||imp._fresh)$("impInfo").textContent="📄 "+imp.length+" Zeilen gelesen → "+impOps.length+" Vorgänge in "+Object.keys(nA).length+" Aufträgen"+(dup>0?" ("+dup+" doppelte Buchungszeilen zusammengefasst)":"")+", davon "+d+" Vorgänge erledigt"+(sel.length?" · angezeigt: "+shown.length+" bei "+selLabel(sel):"")+(imp._src?" ("+imp._src+")":"")+"."+(noAp?" ⚠️ Spalte ArbPlatz fehlt – bitte beim Kopieren mit markieren, dann gehen die Arbeitsplatz-Knöpfe.":"");
+ imp._fresh=false;}
+$("impFs").onclick=function(e){fsClick(e,impSort,"tf_impsort",renderImp);};$("impSort").onclick=function(e){fsClick(e,impSort,"tf_impsort",renderImp);};
+$("impTbl").querySelector("thead").onclick=function(e){var th=e.target.closest("th.so");if(!th)return;var k=th.dataset.s;if(impSort.k===k)impSort.d=impSort.d===-1?1:-1;else{impSort.k=k;impSort.d=1;}localStorage.setItem("tf_impsort",JSON.stringify(impSort));renderImp();};
+function impSave(){kvSet("imported",{rows:imp,src:imp._src||""});imp._fresh=true;renderImp();render();}
+$("impRows").onchange=function(e){var g=e.target.dataset.g;if(g==null)return;impOps[+g].idx.forEach(function(i){imp[i].done=e.target.checked;});impSave();};
+function impVisible(){return TafelCore.filterOps(impOps,apSel);}
+$("impAll").onclick=function(){impVisible().forEach(function(o){o.idx.forEach(function(i){imp[i].done=true;});});impSave();};
+$("impNone").onclick=function(){impVisible().forEach(function(o){o.idx.forEach(function(i){imp[i].done=false;});});impSave();};
 function setImp(res,src){if(!res.rows.length){$("impInfo").textContent="⚠️ Keine Aufträge gefunden. Bitte Kopfzeile und Spalten Material, Auftrag, Vorgang, VorgMenge, Gutmenge mitkopieren.";return;}
- imp=res.rows;imp._src=src+(res.hasQty?", erledigt = Gutmenge = VorgMenge":", ⚠️ keine Spalten VorgMenge/Gutmenge – bitte selbst abhaken");kvSet("imported",{rows:imp,src:imp._src});renderImp();}
+ imp=res.rows;imp._src=src+(res.hasQty?", erledigt = Gutmenge = VorgMenge":", ⚠️ keine Spalten VorgMenge/Gutmenge – bitte selbst abhaken");kvSet("imported",{rows:imp,src:imp._src});imp._fresh=true;renderImp();render();}
 function readXlsx(buf,name){if(typeof XLSX==="undefined"){$("impInfo").textContent="Excel-Leser nicht geladen (Internet?). Alternativ: In Excel kopieren und unten einfügen.";return;}
  var wb=XLSX.read(buf,{type:"array"}),best=null;
  wb.SheetNames.forEach(function(n){var ws=wb.Sheets[n];if(!ws["!ref"])return;var grid=XLSX.utils.sheet_to_json(ws,{header:1,raw:false,defval:"",blankrows:true});
@@ -455,7 +542,9 @@ $("impApply").onclick=function(){if(!imp.length)return;var ord=[],map={};
   if(!o.wkz&&m)o.wkz=m;if(r.done&&!o.done){o.done=true;o.vorgang=r.vorgang||"";o.vorg=r.vorg;o.gut=r.gut;}});
  var nr=0;ord.forEach(function(o){if(!o.done){var k=items.findIndex(function(i){return i.src==="imp"&&(o.fauf?i.fauf===o.fauf:normW(i.wkz)===normW(o.wkz));});if(k>=0){items.splice(k,1);nr++;}}});
  var a=addOrders(ord,"imp");results=null;save();render();
- $("impInfo").textContent="✅ Übernommen: "+ord.length+" Aufträge, Plan +"+a.np+" (gesamt "+plan.length+"), erledigt +"+a.ni+(nr?", "+nr+" Häkchen entfernt":"")+". Jetzt Tafel fotografieren → „Karten markieren“.";};
+ var nb=plan.filter(function(p){return p.src==="bot";}).length,inImp={};ord.forEach(function(o){if(o.fauf)inImp[o.fauf]=1;else inImp["W"+normW(o.wkz)]=1;});
+ var ni2=plan.filter(function(p){return p.src!=="bot"&&(p.fauf?inImp[p.fauf]:inImp["W"+normW(p.wkz)]);}).length,old=plan.length-nb-ni2,nd=ord.filter(function(o){return o.done;}).length,ops=TafelCore.groupOps(imp).length;
+ $("impInfo").textContent="✅ Übernommen: "+ord.length+" verschiedene Aufträge ("+ops+" Vorgänge aus "+imp.length+" Buchungszeilen), davon "+nd+" erledigt. Liste: +"+a.ni+" neu"+(nr?", "+nr+" Häkchen entfernt":"")+". Plan: +"+a.np+" neu, gesamt "+plan.length+" ("+nb+" vom Bot, "+ni2+" aus diesem Import"+(old>0?", "+old+" ältere – bei Bedarf unten „Plan leeren“":"")+"). Jetzt Tafel fotografieren → „Karten markieren“.";};
 Promise.all([kvGet("imported"),kvGet("impText")]).then(function(v){if(v[0]&&v[0].rows&&v[0].rows.length){imp=v[0].rows;imp._src=v[0].src;renderImp();}if(v[1])$("impText").value=v[1];}).catch(function(){});
 
 // ---- Tafel-Schnappschüsse ----
@@ -535,27 +624,32 @@ document.addEventListener("paste",function(e){var t=e.target,tag=t&&t.tagName;if
 // Touch-Geräte (iPhone): Feld dient als Tipp-Feld zur Auswahl
 if(window.matchMedia&&matchMedia("(hover:none) and (pointer:coarse)").matches){document.querySelectorAll(".drop").forEach(function(d){var T=d.querySelector(".dzT"),S=d.querySelector(".dzS");
  T.textContent=d.id==="dzI"?"📂 Hier tippen: Excel-Datei auswählen":d.id==="dzX"?"🖼 Hier tippen: Excel-Fotos auswählen":"🖼 Hier tippen: Bilder auswählen";S.textContent=d.id==="dzI"?".xlsx, .xls, .csv":"mehrere Bilder auf einmal möglich";});}
-// ---- v2.8: Arbeitsgänge je Arbeitsplatz (Filter-Knöpfe, zuklappbare Listen fertig/offen) ----
-var apSel=localStorage.getItem("tf_ap")||"ALLE",apData=null;
-function apLabel(a){return a==="?"?"ohne Arbeitsplatz":(TafelCore.AP_NAMES[a]?TafelCore.AP_NAMES[a]+" ("+a+")":a);}
-function setApRows(rows,stand){try{apData=TafelCore.opsByAp(rows);apData.stand=stand;}catch(e){apData=null;}renderAp();}
-function opHtml(o,showAp){var st;if(o.done)st='<div class="st f">✅ fertig</div>';else if(o.fehlt!=null&&o.fehlt<0)st='<div class="st w">⚠️ Gut '+(-o.fehlt)+' Stück mehr als Vorgabe – bitte prüfen</div>';
+// ---- v2.8/v2.9: Arbeitsgänge je Arbeitsplatz (Mehrfach-Filter, Sortierung, zuklappbare Listen fertig/offen) ----
+var apData=null;
+function apLabel(a){return apLbl(a);}
+function setApRows(rows,stand){botRowsC=(rows||[]).slice();doneIdx=null;try{apData=TafelCore.opsByAp(rows);apData.stand=stand;}catch(e){apData=null;}renderAp();render();}
+function opHtml(o){var st;if(o.done)st='<div class="st f">✅ fertig</div>';else if(o.fehlt!=null&&o.fehlt<0)st='<div class="st w">⚠️ Gut '+(-o.fehlt)+' Stück mehr als Vorgabe – bitte prüfen</div>';
  else st='<div class="st o">⏳ offen'+(o.fehlt!=null?' – fehlen '+o.fehlt+' Stück':'')+'</div>';
- return '<div class="op"><div class="m">Wkz '+esc(o.material||"–")+'</div><div class="d">Auftrag <b>'+esc(o.auftrag||"–")+'</b> · Vorgang <b>'+esc(o.vorgang||"–")+'</b>'+(showAp?' · '+esc(apLabel(o.ap)):'')+'</div>'+
-  '<div class="d">Vorgabe <b>'+(o.vorg!=null?o.vorg:"?")+'</b> · Gut <b>'+(o.gut!=null?o.gut:"?")+'</b> Stück</div>'+st+'</div>';}
+ return '<div class="op"><div class="m">'+esc(apLabel(o.ap))+' · Wkz '+esc(o.material||"–")+'</div><div class="d">Auftrag <b>'+esc(o.auftrag||"–")+'</b> · Vorgang <b>'+esc(o.vorgang||"–")+'</b></div>'+
+  '<div class="d">Vorgabe <b>'+(o.vorg!=null?o.vorg:"?")+'</b> · Gut <b>'+(o.gut!=null?o.gut:"?")+'</b> Stück'+(o.nach?' · Nacharbeit <b>'+o.nach+'</b>':'')+(o.n>1?' <span class="small">('+o.n+' Buchungen)</span>':'')+'</div>'+st+(opAll(o)?'<div>'+GREEN_TAG+' <span class="small">ganzer Auftrag an allen Arbeitsplätzen</span></div>':'')+'</div>';}
 function renderAp(){var info=$("apInfo"),bt=$("apBtns");
- if(!apData||!apData.ops.length){info.textContent="📋 Noch kein Plan vom Bot – sobald er da ist, erscheinen hier die Arbeitsgänge mit Stückzahlen.";bt.innerHTML="";$("apTitle").textContent="";$("apDone").hidden=$("apOpen").hidden=true;return;}
- if(apSel!=="ALLE"&&!apData.aps.some(function(a){return a.ap===apSel;}))apSel="ALLE";
- info.innerHTML="Plan vom <b>"+esc(fmtStand(apData.stand))+"</b> · <b>"+apData.done+" von "+apData.ops.length+"</b> Vorgängen fertig. Arbeitsgang antippen:";
- var b='<button type="button" class="apb'+(apSel==="ALLE"?' on':'')+'" data-ap="ALLE">Alle<span class="z">'+apData.done+' / '+apData.ops.length+' fertig</span></button>';
- apData.aps.forEach(function(a){b+='<button type="button" class="apb'+(apSel===a.ap?' on':'')+'" data-ap="'+esc(a.ap)+'">'+esc(a.name||(a.ap==="?"?"ohne Platz":a.ap))+(a.name?'<span class="c">'+esc(a.ap)+'</span>':'')+'<span class="z">'+a.done+' / '+a.ops.length+' fertig</span></button>';});
- bt.innerHTML=b;var all=apSel==="ALLE",list=all?apData.ops:apData.aps.filter(function(a){return a.ap===apSel;})[0].ops;
+ if(!apData||!apData.ops.length){info.textContent="📋 Noch kein Plan vom Bot – sobald er da ist, erscheinen hier die Arbeitsgänge mit Stückzahlen.";bt.innerHTML="";$("apSort").innerHTML="";$("apTitle").textContent="";$("apDone").hidden=$("apOpen").hidden=true;renderMkFs();return;}
+ info.innerHTML="Plan vom <b>"+esc(fmtStand(apData.stand))+"</b> · <b>"+apData.done+" von "+apData.ops.length+"</b> Vorgängen fertig. Arbeitsplatz antippen (mehrere möglich):";
+ bt.innerHTML=fBtns(apData.aps.map(function(a){return {ap:a.ap,n:a.ops.length,done:a.done};}),apSel,apData.ops.length,apData.done,true);
+ $("apSort").innerHTML=sBtns(apSort);
+ var list=TafelCore.sortOps(TafelCore.filterOps(apData.ops,apSel),apSort.k,apSort.d);
  var d=list.filter(function(o){return o.done;}),op=list.filter(function(o){return !o.done;});
- $("apTitle").textContent=(all?"Alle Arbeitsplätze":apLabel(apSel))+": "+d.length+" von "+list.length+" fertig";
+ var gA={};list.forEach(function(o){if(opAll(o))gA[o.auftrag||"M"+o.material]=1;});var nA={};list.forEach(function(o){nA[o.auftrag||"M"+o.material]=1;});
+ $("apTitle").textContent=selLabel()+": "+d.length+" von "+list.length+" fertig · 🟢 "+Object.keys(gA).length+" von "+Object.keys(nA).length+" Aufträgen ganz fertig";
  $("apDone").hidden=$("apOpen").hidden=false;$("apDoneT").textContent="✅ Fertig ("+d.length+")";$("apOpenT").textContent="⏳ Offen ("+op.length+")";
- $("apDoneL").innerHTML=d.map(function(o){return opHtml(o,all);}).join("")||'<div class="op small">Noch nichts fertig.</div>';
- $("apOpenL").innerHTML=op.map(function(o){return opHtml(o,all);}).join("")||'<div class="op small">Alles fertig 👍</div>';}
-$("apBtns").onclick=function(e){var b=e.target.closest("button");if(!b||!b.dataset.ap)return;apSel=b.dataset.ap;localStorage.setItem("tf_ap",apSel);renderAp();};
+ $("apDoneL").innerHTML=d.map(opHtml).join("")||'<div class="op small">Noch nichts fertig.</div>';
+ $("apOpenL").innerHTML=op.map(opHtml).join("")||'<div class="op small">Alles fertig 👍</div>';renderMkFs();}
+$("apBtns").onclick=function(e){fsClick(e,apSort,"tf_apsort",renderAp);};$("apSort").onclick=function(e){fsClick(e,apSort,"tf_apsort",renderAp);};
+// Filter-Knöpfe bei „Karten markieren“ (gleiche Auswahl)
+function renderMkFs(){var el=$("mkFs");if(!el)return;var ops=TafelCore.groupOps(botRowsC.length?botRowsC:(imp||[]));
+ if(!ops.length){el.innerHTML='<div class="small">Arbeitsplatz-Knöpfe erscheinen, sobald ein Plan da ist.</div>';return;}
+ el.innerHTML=fBtns(TafelCore.apList(ops),apSel,ops.length,ops.filter(function(o){return o.done;}).length,true);}
+$("mkFs").onclick=function(e){fsClick(e,apSort,"tf_apsort",renderAp);};
 document.querySelectorAll("details.fold").forEach(function(d){d.addEventListener("toggle",function(){var t=d.querySelector(".tg");if(t)t.textContent=d.open?"▾ schließen":"▸ öffnen";});});
 kvGet("botRows").then(function(v){if(v&&v.rows&&!apData)setApRows(v.rows,v.stand);else if(!apData)renderAp();}).catch(function(){renderAp();});
 render();renderMark();
